@@ -1,20 +1,31 @@
-import os
 from pathlib import Path
 
-# Definição de caminhos absolutos baseados na raiz do projeto
+# ------------------------------------------------------------------ caminhos
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = os.path.join(BASE_DIR, "data")
+DATA_DIR = BASE_DIR / "data"
+BRONZE_DIR = DATA_DIR / "bronze"          # HTML bruto compactado (.html.gz)
+WAREHOUSE_PATH = DATA_DIR / "furia.duckdb"  # staging + silver + gold
+EXPORT_DIR = DATA_DIR / "gold_export"      # gold em JSON/Parquet para o dashboard
+SQL_DIR = BASE_DIR / "sql"
 
-# Governança: Garantindo a existência do Storage Local
-os.makedirs(DATA_DIR, exist_ok=True)
+# ---------------------------------------------------------------------- time
+TEAM_ID = 8297
+TEAM_SLUG = "furia"
 
-# URLs do Ecossistema FURIA
-URL_PLAYER_STATS = "https://www.hltv.org/stats/teams/players/8297/furia"
-URL_TEAM_MAPS = "https://www.hltv.org/stats/teams/maps/8297/furia"
-URL_TEAM_MATCHES = "https://www.hltv.org/stats/teams/matches/8297/furia"
-URL_TEAM_EVENTS = "https://www.hltv.org/stats/teams/events/8297/furia"
-URL_TEAM_LINEUPS = "https://www.hltv.org/stats/teams/lineups/8297/furia"
+# ---------------------------------------------------------------------- URLs
+BASE_URL = "https://www.hltv.org"
+URL_RESULTS = f"{BASE_URL}/results?team={TEAM_ID}"
+URL_EVENTS = f"{BASE_URL}/stats/teams/events/{TEAM_ID}/{TEAM_SLUG}"
+RESULTS_PAGE_SIZE = 100  # a HLTV lista 100 partidas por página de resultados
 
-# Parâmetros de Execução e Evasão (Stealth)
-MAX_PAGES_TO_SCRAPE = 50
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+# ------------------------------------------------------------------ extração
+CHROME_DEBUG_PORT = 9222
+DELAY_RANGE = (1.5, 3.0)   # pausa entre páginas, em segundos
+PAGE_TIMEOUT = 30          # espera máxima pelo conteúdo de uma página
+CHALLENGE_TIMEOUT = 300    # espera máxima pela verificação manual do Cloudflare
+EVENTS_CHALLENGE_TIMEOUT = 90  # a página de eventos é opcional: espera menos
+RECENT_MATCH_DAYS = 3      # partida recente sem estatísticas é tentada de novo
+
+# Incrementar sempre que transform/parsers.py mudar o que extrai:
+# na execução seguinte todo o bronze é reinterpretado, sem nova raspagem.
+PARSER_VERSION = 1

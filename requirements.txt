@@ -1,4 +1,6 @@
 DrissionPage>=4.1.1.4
 beautifulsoup4>=4.12.3
-polars>=1.0.0
+lxml>=5.0.0
+duckdb>=1.1.0
 pyarrow>=14.0.0
+pytest>=8.0.0
