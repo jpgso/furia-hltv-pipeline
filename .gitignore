@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Artefatos gerados pela esteira (recriados a cada execução)
+logs/
+data/
+
+# Editor / SO
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+
