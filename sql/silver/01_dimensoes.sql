@@ -64,7 +64,8 @@ SELECT
     e.data_fim,
     year(e.data_inicio)                                              AS ano,
     c.colocacao,
-    TRY_CAST(regexp_extract(c.colocacao, '^(\d+)', 1) AS INTEGER)    AS melhor_posicao
+    TRY_CAST(regexp_extract(c.colocacao, '^(\d+)', 1) AS INTEGER)    AS melhor_posicao,
+    TRY_CAST(regexp_extract(c.colocacao, '(\d+)\D*$', 1) AS INTEGER) AS pior_posicao
 FROM eventos e
 LEFT JOIN colocacoes c
        ON c.event_id = e.evento_id

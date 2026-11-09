@@ -112,6 +112,7 @@ def test_silver_is_in_furia_perspective(tmp_path):
         ("ADVERSARIO", "BAN", 4), ("ADVERSARIO", "PICK", 2), ("FURIA", "BAN", 4), ("FURIA", "PICK", 2), (None, "SOBRA", 2)]
     assert q("SELECT nome FROM silver.dim_time WHERE eh_furia") == [("FURIA",)]
     assert q("SELECT colocacao, melhor_posicao FROM silver.dim_evento WHERE evento_id = 7289") == [("5-8th", 5)]
+    assert q("SELECT pior_posicao FROM silver.dim_evento WHERE evento_id = 7289") == [(8,)]
     # jogador x mapa x lado, sem produto cartesiano: 2 jogadores x 2 mapas x 3 lados + 2 x 3 x 1
     assert q("SELECT count(*) FROM silver.fato_jogador_mapa") == [(18,)]
     con.close()

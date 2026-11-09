@@ -54,6 +54,7 @@ WITH p AS (
         count(*)                                             AS partidas,
         count(*) FILTER (WHERE resultado = 'V')              AS vitorias,
         count(*) FILTER (WHERE resultado = 'D')              AS derrotas,
+        count(*) FILTER (WHERE resultado = 'E')              AS empates,
         min(data)                                            AS primeira_partida,
         max(data)                                            AS ultima_partida,
         arg_max(sequencia, data_hora)                        AS sequencia_atual,
@@ -67,12 +68,12 @@ WITH p AS (
 e AS (
     SELECT
         count(*)                                             AS campeonatos,
-        count(*) FILTER (WHERE melhor_posicao = 1)           AS titulos,
-        count(*) FILTER (WHERE melhor_posicao <= 4)          AS top_4
+        count(*) FILTER (WHERE pior_posicao = 1)             AS titulos,
+        count(*) FILTER (WHERE pior_posicao <= 4)            AS top_4
     FROM silver.fato_colocacao_evento
 )
 SELECT
-    p.partidas, p.vitorias, p.derrotas,
+    p.partidas, p.vitorias, p.derrotas, p.empates,
     round(100.0 * p.vitorias / nullif(p.partidas, 0), 1)                                  AS aproveitamento,
     p.mapas_vencidos, p.mapas_perdidos,
     round(100.0 * p.mapas_vencidos / nullif(p.mapas_vencidos + p.mapas_perdidos, 0), 1)   AS aproveitamento_mapas,
@@ -126,6 +127,7 @@ SELECT
     e.data_fim,
     e.colocacao,
     e.melhor_posicao,
+    e.pior_posicao,
     count(*)                                                       AS partidas,
     count(*) FILTER (WHERE fp.resultado = 'V')                     AS vitorias,
     count(*) FILTER (WHERE fp.resultado = 'D')                     AS derrotas,

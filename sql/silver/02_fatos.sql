@@ -68,6 +68,7 @@ SELECT
     l.rounds_prorrogacao_furia,
     l.rounds_prorrogacao_adversario,
     l.rounds_prorrogacao_furia IS NOT NULL       AS teve_prorrogacao,
+    l.mapa = 'Default'                           AS sem_disputa,  -- vantagem de mapa ou W.O.
     l.lado_inicial_furia,
     CASE WHEN l.escolhido_por_team_id = l.furia_id THEN 'FURIA'
          WHEN l.escolhido_por_team_id IS NOT NULL THEN 'ADVERSARIO'
@@ -124,7 +125,8 @@ SELECT
     coalesce(c.event_id, e.evento_id)                                AS evento_id,
     c.evento_nome,
     c.colocacao,
-    TRY_CAST(regexp_extract(c.colocacao, '^(\d+)', 1) AS INTEGER)    AS melhor_posicao
+    TRY_CAST(regexp_extract(c.colocacao, '^(\d+)', 1) AS INTEGER)    AS melhor_posicao,
+    TRY_CAST(regexp_extract(c.colocacao, '(\d+)\D*$', 1) AS INTEGER) AS pior_posicao
 FROM staging.event_placements c
 LEFT JOIN silver.dim_evento e
        ON c.event_id IS NULL AND lower(trim(c.evento_nome)) = lower(trim(e.nome));

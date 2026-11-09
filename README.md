@@ -74,4 +74,6 @@ python -m pytest tests -q
 - Datas e horas estão no horário de Brasília (UTC-3).
 - Estatísticas "eco-adjusted" (eK-eD, eADR, eKAST) e Swing só existem nas partidas mais recentes; nas antigas ficam nulas.
 - O rating mistura versões da HLTV (2.0 nas partidas antigas, 3.0 nas novas); a coluna `rating_versao` identifica cada linha.
+- O mapa `Default` (vantagem de mapa ou W.O.) conta no placar da série, mas fica fora das estatísticas por mapa (`sem_disputa`).
+- Título é a colocação `1st`; faixas como `1-2nd` não contam como título.
 - Fonte dos dados: HLTV.org. O conteúdo bruto (`data/`) não é versionado neste repositório.

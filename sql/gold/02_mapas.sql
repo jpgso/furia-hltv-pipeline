@@ -23,6 +23,7 @@ WITH jogos AS (
         max(fp.data)                                                    AS ultima_vez
     FROM silver.fato_mapa fm
     JOIN silver.fato_partida fp USING (partida_id)
+    WHERE NOT fm.sem_disputa
     GROUP BY fm.mapa_id
 ),
 vetos AS (
@@ -70,6 +71,7 @@ SELECT
 FROM silver.fato_mapa fm
 JOIN silver.fato_partida fp USING (partida_id)
 JOIN silver.dim_mapa d USING (mapa_id)
+WHERE NOT fm.sem_disputa
 GROUP BY ALL
 ORDER BY ano, jogados DESC;
 
