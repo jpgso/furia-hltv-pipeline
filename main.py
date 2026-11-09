@@ -19,15 +19,25 @@ def run(mode: str, limit: int | None = None) -> int:
 
     start = time.time()
     logger.info(f"=== Esteira FURIA/HLTV | modo: {mode} ===")
-    try:
-        if mode != "reconstruir":
+    failed = False
+    if mode != "reconstruir":
+        try:
             from extract.crawler import run_extraction
 
             run_extraction(full=(mode == "historico"), limit=limit)
+        except Exception as exc:
+            # O que já foi baixado está salvo na bronze: o banco é atualizado mesmo assim.
+            failed = True
+            logger.critical(f"Extração interrompida: {exc}")
+            logger.error(traceback.format_exc())
+    try:
         warehouse.build(reparse_all=(mode == "reconstruir"))
     except Exception as exc:
-        logger.critical(f"Execução interrompida: {exc}")
+        logger.critical(f"Construção do banco interrompida: {exc}")
         logger.error(traceback.format_exc())
+        return 1
+    if failed:
+        logger.warning("Banco atualizado com o que havia na bronze; rode de novo para baixar o restante.")
         return 1
     logger.info(f"=== Concluído em {time.time() - start:.1f}s ===")
     return 0
