@@ -24,8 +24,8 @@ function render() {
 }
 
 // ---------------------------------------------------------------- utilidades
-const cor = v => v == null ? '' : `background:${v >= 50 ? `rgba(63,179,127,${Math.min(.3, (v - 50) / 100)})` : `rgba(255,77,94,${Math.min(.3, (50 - v) / 100)})`}`;
-const corRating = v => v == null ? '' : `background:${v >= 1 ? `rgba(63,179,127,${Math.min(.32, (v - 1) * 1.1)})` : `rgba(255,77,94,${Math.min(.32, (1 - v) * 1.1)})`}`;
+const cor = v => v == null ? '' : `background:${v >= 50 ? `rgba(43,213,118,${Math.min(.3, (v - 50) / 100)})` : `rgba(255,71,87,${Math.min(.3, (50 - v) / 100)})`}`;
+const corRating = v => v == null ? '' : `background:${v >= 1 ? `rgba(43,213,118,${Math.min(.32, (v - 1) * 1.1)})` : `rgba(255,71,87,${Math.min(.32, (1 - v) * 1.1)})`}`;
 const selo = r => `<span class="r" style="background:${corResultado(r)}">${r}</span>`;
 
 function tabela(id, cols, linhas, padrao, limite) {
@@ -50,7 +50,7 @@ function grafico(id, opt) {
   g.setOption(Object.assign({textStyle: {fontFamily: 'system-ui, sans-serif'}, animationDuration: 300}, opt));
   return g;
 }
-const eixo = {axisLine: {lineStyle: {color: LINE}}, axisTick: {show: false}, axisLabel: {color: MUT}, splitLine: {lineStyle: {color: '#1b1f26'}}};
+const eixo = {axisLine: {lineStyle: {color: LINE}}, axisTick: {show: false}, axisLabel: {color: MUT}, splitLine: {lineStyle: {color: '#1c1c22'}}};
 const dica = {backgroundColor: '#000', borderColor: LINE, textStyle: {color: TXT, fontSize: 12}};
 $('conteudo').onclick = e => {
   const th = e.target.closest('th[data-k]'), botao = e.target.closest('[data-p]');
@@ -126,8 +126,8 @@ function abaMapas(R) {
   grafico('g-heat', {
     grid: {left: 76, right: 10, top: 10, bottom: 30}, tooltip: Object.assign({formatter: p => `${esc(nomes[p.data[1]])} · ${anos[p.data[0]]}<br><b>${p.data[2]}%</b> em ${p.data[3]} mapas`}, dica),
     xAxis: Object.assign({type: 'category', data: anos}, eixo, {splitLine: {show: false}}), yAxis: Object.assign({type: 'category', data: nomes}, eixo, {splitLine: {show: false}}),
-    visualMap: {min: 20, max: 80, dimension: 2, show: false, inRange: {color: ['#ff4d5e', '#2a1418', '#1d2128', '#17382a', '#3fb37f']}},
-    series: [{type: 'heatmap', data: dados, label: {show: true, color: '#fff', fontSize: 11, formatter: p => p.data[2]}, itemStyle: {borderColor: '#0f1115', borderWidth: 2}}]});
+    visualMap: {min: 20, max: 80, dimension: 2, show: false, inRange: {color: ['#ff4757', '#2a1418', '#1e1e24', '#124a2c', '#2bd576']}},
+    series: [{type: 'heatmap', data: dados, label: {show: true, color: '#fff', fontSize: 11, formatter: p => p.data[2]}, itemStyle: {borderColor: '#0a0a0c', borderWidth: 2}}]});
 }
 
 function jogadores(R) {
@@ -167,8 +167,8 @@ function jogadores(R) {
   grafico('g-jm', {
     grid: {left: 84, right: 10, top: 10, bottom: 44}, tooltip: Object.assign({formatter: p => `${esc(nj[p.data[1]])} · ${esc(nomesMapa[p.data[0]])}<br><b>${fmt(p.data[2], 2)}</b> em ${p.data[3]} mapas`}, dica),
     xAxis: Object.assign({type: 'category', data: nomesMapa}, eixo, {splitLine: {show: false}, axisLabel: {color: MUT, rotate: 30}}), yAxis: Object.assign({type: 'category', data: nj}, eixo, {splitLine: {show: false}}),
-    visualMap: {min: .8, max: 1.3, dimension: 2, show: false, inRange: {color: ['#ff4d5e', '#2a1418', '#1d2128', '#17382a', '#3fb37f']}},
-    series: [{type: 'heatmap', data: dados, label: {show: nj.length <= 12, color: '#fff', fontSize: 10, formatter: p => p.data[2].toFixed(2)}, itemStyle: {borderColor: '#0f1115', borderWidth: 2}}]});
+    visualMap: {min: .8, max: 1.3, dimension: 2, show: false, inRange: {color: ['#ff4757', '#2a1418', '#1e1e24', '#124a2c', '#2bd576']}},
+    series: [{type: 'heatmap', data: dados, label: {show: nj.length <= 12, color: '#fff', fontSize: 10, formatter: p => p.data[2].toFixed(2)}, itemStyle: {borderColor: '#0a0a0c', borderWidth: 2}}]});
 }
 
 function vetos(R) {

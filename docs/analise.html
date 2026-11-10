@@ -3,58 +3,67 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
 <title>FURIA em dados: análise detalhada</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,800&display=swap" rel="stylesheet">
 <script defer src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js" integrity="sha384-Mx5lkUEQPM1pOJCwFtUICyX45KNojXbkWdYhkKUKsbv391mavbfoAmONbzkgYPzR" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="comum.css">
 <script defer src="comum.js"></script>
 <script defer src="analise.js"></script>
 <style>
-body{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;font-size:14px}
+body{font-size:14px}
 .wrap{max-width:1280px;margin:0 auto;padding:0 24px}
-nav{background:rgba(15,17,21,.9);border-bottom:1px solid var(--line)}
+nav{border-bottom:1px solid var(--line)}
 nav .wrap{display:flex;justify-content:space-between;align-items:center;height:56px}
 nav a.volta{color:var(--mut);text-decoration:none;font-size:13px}
 nav a.volta:hover{color:var(--txt)}
-h1{font-weight:700;font-size:clamp(24px,3.4vw,34px);margin:28px 0 4px}
+h1{font-family:var(--disp);font-style:italic;font-weight:800;text-transform:uppercase;font-size:clamp(46px,7vw,88px);line-height:.9;margin:30px 0 8px}
+h1 span{color:transparent;-webkit-text-stroke:2px var(--txt)}
 .sub{color:var(--mut);margin-bottom:18px}
 .filtros{position:sticky;top:0;z-index:9;backdrop-filter:blur(10px);margin-bottom:14px}
-.abas{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin:18px 0}
-.aba{padding:10px 16px;cursor:pointer;color:var(--mut);border-bottom:2px solid transparent;white-space:nowrap;font-weight:500}
-.aba.on{color:var(--txt);border-color:var(--acc)}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px;margin-bottom:16px}
-.card h3{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);font-weight:500;margin-bottom:12px}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:16px}
-.kpis div{background:var(--bg);padding:16px 18px}
-.kpis .n{font-weight:700;font-size:26px;line-height:1.1}
-.kpis .n small{font-size:.5em;color:var(--mut);margin-left:3px}
-.kpis .l{color:var(--mut);font-size:11px;letter-spacing:.12em;text-transform:uppercase;margin-top:6px}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.abas{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);margin:20px 0}
+.aba{font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:.05em;text-transform:uppercase;padding:8px 16px;cursor:pointer;color:var(--mut);border-bottom:3px solid transparent;white-space:nowrap}
+.aba:hover{color:var(--txt)}
+.aba.on{color:#000;background:var(--txt);border-color:var(--txt)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:18px;margin-bottom:14px}
+.card h3{font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px}
+.kpis>div{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--txt);padding:14px 16px}
+.kpis>div:first-child{background:var(--txt);border-color:var(--txt);color:#000}
+.kpis .n{font-family:var(--disp);font-weight:700;font-size:46px;line-height:1}
+.kpis .n small{font-size:.5em;margin-left:2px;opacity:.6}
+.kpis .l{color:var(--mut);font-size:11px;letter-spacing:.12em;text-transform:uppercase;margin-top:4px}
+.kpis>div:first-child .l{color:#000;opacity:.7}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .ch{height:320px}.ch.alto{height:420px}
 .tw{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th{color:var(--mut);font-weight:500;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;text-align:right;user-select:none}
+th{color:var(--mut);font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:8px 10px;border-bottom:2px solid var(--txt);white-space:nowrap;cursor:pointer;text-align:right;user-select:none}
+th:hover{color:var(--txt)}
 th.e,td.e{text-align:left}
-th.s{color:var(--acc)}
-td{padding:8px 10px;border-bottom:1px solid #1d2128;text-align:right;white-space:nowrap}
-td.e{font-weight:500}
-tr:hover td{background:#1a1d23}
-td a{color:var(--acc);text-decoration:none}
-.r{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;font-weight:600;font-size:11px;color:#000}
+th.s{color:var(--txt)}
+td{padding:8px 10px;border-bottom:1px solid #1e1e24;text-align:right;white-space:nowrap}
+td.e{font-weight:600}
+tr:hover td{background:#1a1a20}
+td a{color:var(--txt);text-decoration:none;border-bottom:1px solid var(--acc)}
+.r{display:inline-grid;place-items:center;width:22px;height:22px;font-weight:700;font-size:11px;color:#000}
 .pag{display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:12px;color:var(--mut)}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:12px}
-.seg span{padding:6px 14px;cursor:pointer;color:var(--mut)}
-.seg span.on{background:var(--acc);color:#000;font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line);margin-bottom:12px}
+.seg span{font-family:var(--disp);font-weight:700;font-size:17px;letter-spacing:.05em;text-transform:uppercase;padding:4px 16px;cursor:pointer;color:var(--mut)}
+.seg span.on{background:var(--txt);color:#000}
 .card .nota{margin-top:10px}
 .vazio{padding:60px 0;text-align:center;color:var(--mut)}
 footer{color:var(--mut);font-size:12px;padding:36px 0 50px}
+footer a{color:var(--txt)}
 @media(max-width:860px){.g2{grid-template-columns:1fr}.filtros{position:static}}
 </style>
 </head>
 <body>
-<nav><div class="wrap"><a class="brand" href="index.html">FURIA <b>EM DADOS</b></a><a class="volta" href="index.html">← Visão geral</a></div></nav>
+<nav><div class="wrap"><a class="brand" href="index.html">FURIA <b>em dados</b></a><a class="volta" href="index.html">← Visão geral</a></div></nav>
 <div class="wrap">
-  <h1>Análise detalhada</h1>
+  <h1>Análise <span>detalhada</span></h1>
   <p class="sub">Combine os filtros para recortar o histórico. Todas as abas respondem ao mesmo recorte.</p>
 
   <div class="filtros" id="filtros"></div>
@@ -62,7 +71,7 @@ footer{color:var(--mut);font-size:12px;padding:36px 0 50px}
   <div class="abas" id="abas"></div>
   <div id="conteudo"><div class="vazio">Carregando dados…</div></div>
 </div>
-<footer><div class="wrap">Projeto de fã, não oficial. Dados: HLTV.org. O rating mistura as versões 2.0 (até out/2023) e 3.0 da HLTV. Mapas sem disputa (W.O.) ficam fora das estatísticas. Código no <a href="https://github.com/jpgso/furia-hltv-pipeline" style="color:var(--acc)">GitHub</a>.</div></footer>
+<footer><div class="wrap">Projeto de fã, não oficial. Dados: HLTV.org. O rating mistura as versões 2.0 (até out/2023) e 3.0 da HLTV. Mapas sem disputa (W.O.) ficam fora das estatísticas. Código no <a href="https://github.com/jpgso/furia-hltv-pipeline">GitHub</a>.</div></footer>
 
 </body>
 </html>

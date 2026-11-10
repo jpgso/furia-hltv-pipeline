@@ -8,11 +8,11 @@ carregaBase().then(() => {
   $('f-abre').onclick = () => { $('filtros').classList.toggle('aberto'); $('f-abre').classList.toggle('on'); document.querySelector('.fbar').classList.toggle('aberta'); };
   preparaDna(); preparaForma();
   $('pipe').innerHTML = [
-    ['01 · Bronze', 'HTML bruto', 'Cada página da HLTV é baixada uma única vez e guardada compactada.', fmt(B.partidas.length) + ' páginas de partida'],
-    ['02 · Silver', 'Modelo estrela', 'Fatos e dimensões em DuckDB, sempre na ótica da FURIA.', 'fatos e dimensões'],
-    ['03 · Gold', 'Agregações', 'Tabelas prontas para análise, escritas em SQL puro.', 'agregadas e por mapa'],
-    ['04 · n8n', 'Atualização', 'Carga incremental automática, com aviso por WhatsApp e e-mail.', 'a cada vez que o PC liga'],
-  ].map(s => `<div class="card step"><div class="k">${s[0]}</div><div class="t">${s[1]}</div><p>${s[2]}</p><div class="v mono">${s[3]}</div></div>`).join('');
+    ['01', 'Bronze', 'HTML bruto', 'Cada página da HLTV é baixada uma única vez e guardada compactada.', fmt(B.partidas.length) + ' páginas de partida'],
+    ['02', 'Silver', 'Modelo estrela', 'Fatos e dimensões em DuckDB, sempre na ótica da FURIA.', 'fatos e dimensões'],
+    ['03', 'Gold', 'Agregações', 'Tabelas prontas para análise, escritas em SQL puro.', 'agregadas e por mapa'],
+    ['04', 'n8n', 'Atualização', 'Carga incremental automática, com aviso por WhatsApp e e-mail.', 'a cada vez que o PC liga'],
+  ].map(s => `<div class="card step"><div class="k">${s[0]}</div><div class="t"><small>${s[1]}</small>${s[2]}</div><p>${s[3]}</p><div class="v mono">${s[4]}</div></div>`).join('');
   $('atualizado').textContent = B.meta.atualizado_em ? 'atualizado em ' + dataBR(B.meta.atualizado_em) : 'última partida em ' + dataBR(B.max);
   atualiza();
 }).catch(e => {
@@ -31,6 +31,10 @@ function atualiza() {
   $('h-part').textContent = fmt(sp.partidas); $('h-pal').textContent = sp.partidas === 1 ? 'partida' : 'partidas';
   $('k-ap').textContent = fmt(sp.ap || 0, 1); $('k-tit').textContent = fmt(eventos.length);
   $('k-seq').textContent = fmt(maiorSequencia(R.partidas)); $('k-rd').textContent = fmt(sm.rv + sm.rp);
+  // Placar geral: a barra reparte a largura entre vitórias, empates e derrotas.
+  [['v', sp.v], ['e', sp.e], ['d', sp.d]].forEach(([k, n]) => { $('b-' + k).style.flex = n; $('b-' + k).style.display = n ? '' : 'none'; });
+  $('l-v').textContent = fmt(sp.v); $('l-d').textContent = fmt(sp.d);
+  $('l-e').textContent = sp.e ? `${sp.e} ${sp.e === 1 ? 'empate' : 'empates'}` : '';
   const anos = R.partidas.length ? [R.partidas[R.partidas.length - 1].data.slice(0, 4), R.partidas[0].data.slice(0, 4)] : null;
   $('kicker').textContent = 'Counter-Strike · ' + (anos ? (anos[0] === anos[1] ? anos[0] : anos[0] + ' a ' + anos[1]) : 'sem partidas') + (ativos.length ? ' · recorte filtrado' : '');
   $('t-dna').textContent = ativos.length ? 'O recorte em uma linha' : 'Toda a história em uma linha';
@@ -43,14 +47,14 @@ function atualiza() {
   forma.setOption({xAxis: {data: dna.cron.map(p => p.data)}, series: [{data: dna.cron.map(p => { jan.push(p.resultado === 'V' ? 1 : 0); v += jan[jan.length - 1]; if (jan.length > 10) v -= jan.shift(); return +(100 * v / jan.length).toFixed(1); })}]});
 
   $('ultimas').innerHTML = R.partidas.slice(0, 6).map(p => `
-    <div class="row"><div class="badge" style="background:${corResultado(p.resultado)}">${p.resultado}</div>
-    <div><div class="who">${p.placar_furia} × ${p.placar_adversario} ${esc(p.adversario)}</div><div class="ev">${esc(p.evento)}</div></div>
+    <div class="row" style="--c:${corResultado(p.resultado)}"><div class="sc">${p.placar_furia}×${p.placar_adversario}</div>
+    <div><div class="who">${esc(p.adversario)}</div><div class="ev">${esc(p.evento)}</div></div>
     <div class="ev mono">${dataBR(p.data).slice(0, 5)}/${p.data.slice(2, 4)}</div></div>`).join('') || '<div class="vazio">Nenhuma partida com esses filtros.</div>';
 
   const porMapa = [...agrupa(R.mapas, m => m.mapa)].map(([mapa, ms]) => Object.assign({mapa}, somaMapas(ms))).sort((a, b) => b.jogados - a.jogados);
   const corte = ativos.length ? 1 : 30;
   $('maps').innerHTML = porMapa.filter(m => m.jogados >= corte).slice(0, 12).map(m => `
-    <div class="card map"><div class="ring" style="--p:${m.ap.toFixed(1)}"><span>${fmt(m.ap)}%</span></div>
+    <div class="card map"><div class="ring" style="--p:${m.ap.toFixed(1)};--c:${m.ap >= 50 ? ACC : LOSS}"><span>${fmt(m.ap)}%</span></div>
     <div class="nm">${esc(m.mapa)}</div><div class="mt">${fmt(m.jogados)} jogados · ${m.v}V ${m.d}D</div>
     <div class="sides"><i style="width:${(m.ct || 0) / 2}%;background:${COR_CT}"></i><i style="width:${(m.tr || 0) / 2}%;background:${COR_TR}"></i></div>
     <div class="mt">CT ${fmt(m.ct)}% · TR ${fmt(m.tr)}%</div></div>`).join('') || '<div class="vazio">Nenhum mapa com esses filtros.</div>';
@@ -63,7 +67,7 @@ function atualiza() {
   $('t-elenco').textContent = ativos.length ? 'Elenco do recorte' : 'Elenco atual';
   $('s-elenco').textContent = ativos.length ? 'A escalação mais recente dentro do recorte, com as médias calculadas só nele.' : 'Rating médio da HLTV em todos os mapas jogados pela FURIA.';
   $('players').innerHTML = elenco.map(j => `
-    <div class="card pl"><div class="nick">${esc(j.jogador)}</div><div class="rt">${fmt(j.rating, 2)}</div><div class="mt" style="color:var(--mut);font-size:12px">rating · ${fmt(j.mapas)} mapas</div>
+    <div class="card pl" style="--c:${j.rating >= 1 ? ACC : LOSS}"><div class="nick">${esc(j.jogador)}</div><div class="rt">${fmt(j.rating, 2)}</div><div class="mt">rating · ${fmt(j.mapas)} mapas</div>
     <div class="st"><span><b>${fmt(j.kd, 2)}</b>K/D</span><span><b>${fmt(j.adr, 1)}</b>ADR</span><span><b>${fmt(j.kast_pct, 1)}%</b>KAST</span></div></div>`).join('') || '<div class="vazio">Sem estatísticas individuais neste recorte.</div>';
 }
 
@@ -98,7 +102,7 @@ function pintaDna(destaque = -1) {
     const x = i * passo, rot = porMes ? p.data.slice(5, 7) + '/' + p.data.slice(2, 4) : p.data.slice(0, 4);
     if (rot !== marca) {
       marca = rot;
-      if (x - ultimoX > 46) { c.fillStyle = '#1b1f26'; c.fillRect(x, 0, 1, H - pad); c.fillStyle = MUT; c.font = '11px system-ui, sans-serif'; c.fillText(rot, x + 4, H - 6); ultimoX = x; }
+      if (x - ultimoX > 46) { c.fillStyle = '#1c1c22'; c.fillRect(x, 0, 1, H - pad); c.fillStyle = MUT; c.font = '11px system-ui, sans-serif'; c.fillText(rot, x + 4, H - 6); ultimoX = x; }
     }
     const saldo = Math.max(-maxS, Math.min(maxS, (p.rounds_vencidos || 0) - (p.rounds_perdidos || 0)));
     const h = Math.max(3, Math.abs(saldo) * escala), v = p.resultado === 'V';
@@ -118,11 +122,11 @@ function preparaForma() {
       formatter: a => `${dataBR(a[0].axisValue)}<br><b>${fmt(a[0].data, 0)}%</b> nas últimas 10`},
     xAxis: {type: 'category', data: [], axisLine: {lineStyle: {color: LINE}}, axisTick: {show: false},
       axisLabel: {color: MUT, hideOverlap: true, formatter: v => dna.cron.length < 120 ? v.slice(5, 7) + '/' + v.slice(2, 4) : v.slice(0, 4)}},
-    yAxis: {type: 'value', min: 0, max: 100, splitLine: {lineStyle: {color: '#1b1f26'}}, axisLabel: {color: MUT, formatter: '{value}%'}},
+    yAxis: {type: 'value', min: 0, max: 100, splitLine: {lineStyle: {color: '#1c1c22'}}, axisLabel: {color: MUT, formatter: '{value}%'}},
     series: [{type: 'line', data: [], smooth: .35, symbol: 'none',
-      lineStyle: {color: ACC, width: 2},
-      areaStyle: {color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset: 0, color: 'rgba(63,179,127,.18)'}, {offset: 1, color: 'rgba(63,179,127,0)'}])},
-      markLine: {silent: true, symbol: 'none', lineStyle: {color: '#3a404b', type: 'dashed'}, label: {color: MUT, formatter: '50%'}, data: [{yAxis: 50}]}}],
+      lineStyle: {color: ACC, width: 2.5},
+      areaStyle: {color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset: 0, color: 'rgba(43,213,118,.34)'}, {offset: 1, color: 'rgba(43,213,118,0)'}])},
+      markLine: {silent: true, symbol: 'none', lineStyle: {color: '#6b6b76', type: 'dashed'}, label: {color: MUT, formatter: '50%'}, data: [{yAxis: 50}]}}],
     animationDuration: 300,
   });
   addEventListener('resize', () => forma.resize());
