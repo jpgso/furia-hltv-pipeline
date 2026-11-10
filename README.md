@@ -79,7 +79,7 @@ Se a verificação do Cloudflare aparecer durante a execução, a esteira pausa 
 
 ## Atualização automática com n8n (opcional)
 
-O fluxo em [`n8n/workflow_furia_diario.json`](n8n/workflow_furia_diario.json) roda a carga diária em segundo plano e avisa por WhatsApp e e-mail quando há partida nova ou quando algo precisa de atenção. Ele dispara ao iniciar o n8n e a cada 3 horas, então não depende de o computador estar ligado em um horário fixo.
+O fluxo em [`n8n/workflow_furia_diario.json`](n8n/workflow_furia_diario.json) roda a carga diária em segundo plano e avisa por WhatsApp e e-mail quando há partida nova ou quando algo precisa de atenção. Ele dispara uma vez a cada inicialização do n8n. Como o n8n sobe junto com o Windows (passo 6), ligar o computador já atualiza os dados e o dashboard, sem depender de horário fixo.
 
 O n8n precisa rodar **na mesma máquina** da esteira, instalado via Node.js (no Docker ele não alcança o Python nem o Chrome).
 

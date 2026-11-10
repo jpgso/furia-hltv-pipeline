@@ -178,7 +178,7 @@ carregaBase().then(() => {
     ['01 · Bronze', 'HTML bruto', 'Cada página da HLTV é baixada uma única vez e guardada compactada.', fmt(B.partidas.length) + ' páginas de partida'],
     ['02 · Silver', 'Modelo estrela', 'Fatos e dimensões em DuckDB, sempre na ótica da FURIA.', '5 fatos · 5 dimensões'],
     ['03 · Gold', 'Agregações', 'Tabelas prontas para análise, escritas em SQL puro.', '16 tabelas'],
-    ['04 · n8n', 'Atualização', 'Carga incremental automática, com aviso por WhatsApp e e-mail.', 'a cada 3 horas'],
+    ['04 · n8n', 'Atualização', 'Carga incremental automática, com aviso por WhatsApp e e-mail.', 'a cada vez que o PC liga'],
   ].map(s => `<div class="card step"><div class="k">${s[0]}</div><div class="t">${s[1]}</div><p>${s[2]}</p><div class="v mono">${s[3]}</div></div>`).join('');
   $('atualizado').textContent = B.meta.atualizado_em ? 'atualizado em ' + dataBR(B.meta.atualizado_em) : 'última partida em ' + dataBR(B.max);
   const obs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('on'); aneis(); } }), {threshold: .12});

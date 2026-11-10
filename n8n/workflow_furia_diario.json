@@ -3,26 +3,6 @@
   "nodes": [
     {
       "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "hours",
-              "hoursInterval": 3
-            }
-          ]
-        }
-      },
-      "id": "a1f0c0de-0001-4000-8000-000000000001",
-      "name": "A cada 3 horas",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        0,
-        0
-      ]
-    },
-    {
-      "parameters": {
         "events": [
           "init"
         ]
@@ -33,7 +13,7 @@
       "typeVersion": 1,
       "position": [
         0,
-        200
+        100
       ]
     },
     {
@@ -160,17 +140,6 @@
     }
   ],
   "connections": {
-    "A cada 3 horas": {
-      "main": [
-        [
-          {
-            "node": "Configuracao",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Ao iniciar o n8n": {
       "main": [
         [
