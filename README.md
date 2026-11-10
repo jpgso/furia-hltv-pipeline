@@ -37,7 +37,7 @@ Site estático em [`docs/`](docs), servido pelo GitHub Pages:
 - `index.html`: visão geral, indicadores, a linha do tempo com todas as partidas, forma, mapas e elenco.
 - `analise.html`: análise detalhada em abas, resumo, mapas, jogadores, vetos, adversários, campeonatos e partidas.
 
-As duas páginas têm os mesmos filtros (período, lineup, mapas, jogador, adversário, ambiente e formato) e recalculam tudo no navegador conforme o recorte. O código comum fica em `comum.js` e `comum.css`; cada página tem o seu script (`index.js`, `analise.js`). Uma política de segurança de conteúdo (CSP) só permite scripts do próprio site e a biblioteca de gráficos, conferida por hash.
+As duas páginas têm os mesmos filtros (período, lineup, mapas, jogador, adversário, ambiente e formato) e recalculam tudo no navegador conforme o recorte. O código comum fica em `comum.js` e `comum.css`; cada página tem o seu script (`index.js`, `analise.js`). As páginas carregam esses arquivos com `?v=<versão>`; ao mudar o visual ou os scripts, troque esse número para o navegador não misturar arquivos novos com antigos em cache. Uma política de segurança de conteúdo (CSP) só permite scripts do próprio site e a biblioteca de gráficos, conferida por hash.
 
 Os dados ficam em `docs/data/`: a cada execução a esteira copia para lá as tabelas gold que o site usa. Com `--publicar`, ela também faz o commit dessa pasta e o push; o GitHub Pages atualiza o site em seguida. Só há commit quando algum dado mudou.
 
