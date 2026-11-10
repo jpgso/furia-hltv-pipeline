@@ -199,3 +199,44 @@ def test_detail_tables_feed_dashboard_filters(tmp_path):
         "SELECT count(*) FROM silver.fato_veto WHERE autor IS NOT NULL")
     con.close()
     assert {"lineups", "detalhe_mapas", "detalhe_jogadores", "detalhe_vetos"} <= {p.stem for p in export.glob("*.json")}
+
+
+# ------------------------------------------------------ publicação do dashboard
+def test_dashboard_data_sync_only_reports_real_changes(tmp_path):
+    from config import settings
+    from load import publish
+
+    _, _, export, _ = _build(tmp_path)
+    dest = tmp_path / "docs" / "data"
+    assert publish.sync_dashboard_data(export, dest) is True
+    assert {p.name for p in dest.glob("*.json")} == {f"{t}.json" for t in settings.DASHBOARD_TABLES} | {"meta.json"}
+    meta = (dest / "meta.json").read_text(encoding="utf-8")
+    assert json.loads(meta)["atualizado_em"]
+    # sem mudança nos dados: nada é regravado, nem a data de atualização
+    assert publish.sync_dashboard_data(export, dest) is False
+    assert (dest / "meta.json").read_text(encoding="utf-8") == meta
+    (export / "lineups.json").write_text("[]", encoding="utf-8")
+    assert publish.sync_dashboard_data(export, dest) is True
+    assert (dest / "lineups.json").read_text(encoding="utf-8") == "[]"
+
+
+def test_dashboard_push_commits_only_the_data_folder(tmp_path):
+    import subprocess
+    from load import publish
+
+    git = lambda cwd, *a: subprocess.run(["git", "-C", str(cwd), *a], capture_output=True, text=True, check=True).stdout
+    remote, repo = tmp_path / "remote.git", tmp_path / "repo"
+    subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(remote)], check=True)
+    subprocess.run(["git", "clone", "-q", str(remote), str(repo)], check=True, capture_output=True)
+    git(repo, "config", "user.name", "teste"); git(repo, "config", "user.email", "teste@example.com")
+    git(repo, "checkout", "-q", "-b", "main")
+    data = repo / "docs" / "data"; data.mkdir(parents=True)
+    (data / "a.json").write_text("[1]"); (repo / "outro.txt").write_text("fora da publicação")
+    git(repo, "add", "docs"); git(repo, "commit", "-q", "-m", "inicial"); git(repo, "push", "-q", "-u", "origin", "main")
+
+    assert publish.push_dashboard(repo, data)["status"] == "sem_mudanca"
+    (data / "a.json").write_text("[1, 2]")
+    assert publish.push_dashboard(repo, data)["status"] == "publicado"
+    assert git(remote, "show", "main:docs/data/a.json") == "[1, 2]"
+    assert "outro.txt" not in git(remote, "ls-tree", "-r", "--name-only", "main")
+    assert publish.push_dashboard(repo, data)["status"] == "sem_mudanca"

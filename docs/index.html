@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FURIA em dados, protótipo</title>
+<title>FURIA em dados</title>
+<meta name="description" content="Todo o histórico da FURIA no Counter-Strike, coletado da HLTV e modelado por uma esteira de dados em arquitetura medalhão.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
@@ -149,7 +150,7 @@ footer{color:var(--mut);font-size:12px;padding:48px 0 60px}
   <div class="pipe" id="pipe"></div>
 </div></section>
 
-<footer><div class="wrap">Projeto de fã, não oficial. Dados: HLTV.org. Protótipo visual, os números são reais, o layout ainda é um estudo.</div></footer>
+<footer><div class="wrap">Projeto de fã, não oficial. Dados: HLTV.org. Código e documentação no <a href="https://github.com/jpgso/furia-hltv-pipeline" style="color:var(--acc)">GitHub</a>.</div></footer>
 <div id="tip"></div>
 
 <script>
@@ -179,7 +180,7 @@ carregaBase().then(() => {
     ['03 · Gold', 'Agregações', 'Tabelas prontas para análise, escritas em SQL puro.', '16 tabelas'],
     ['04 · n8n', 'Atualização', 'Carga incremental automática, com aviso por WhatsApp e e-mail.', 'a cada 3 horas'],
   ].map(s => `<div class="card step"><div class="k">${s[0]}</div><div class="t">${s[1]}</div><p>${s[2]}</p><div class="v mono">${s[3]}</div></div>`).join('');
-  $('atualizado').textContent = 'última partida em ' + dataBR(B.max);
+  $('atualizado').textContent = B.meta.atualizado_em ? 'atualizado em ' + dataBR(B.meta.atualizado_em) : 'última partida em ' + dataBR(B.max);
   const obs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('on'); aneis(); } }), {threshold: .12});
   document.querySelectorAll('.rev').forEach(el => obs.observe(el));
   atualiza();

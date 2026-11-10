@@ -1,5 +1,5 @@
 // Base de dados, filtros e agregações compartilhados pelas duas páginas do dashboard.
-const D = '../data/gold_export/';
+const D = 'data/';
 const get = f => fetch(D + f + '.json').then(r => r.json());
 const $ = id => document.getElementById(id);
 const fmt = (n, d) => { d = typeof d === 'number' ? d : 0; return n == null || isNaN(n) ? '–' : Number(n).toLocaleString('pt-BR', {minimumFractionDigits: d, maximumFractionDigits: d}); };
@@ -21,6 +21,7 @@ async function carregaBase() {
   B.vetos = vetos; B.lineups = lineups; B.linhasJog = jog;
   B.colocacao = new Map(eventos.map(e => [e.evento, e]));
   B.min = partidas[partidas.length - 1].data; B.max = partidas[0].data;
+  B.meta = await get('meta').catch(() => ({}));       // quando os dados foram publicados
 }
 
 function htmlFiltros() {

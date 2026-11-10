@@ -1,0 +1,2 @@
+# Dados do dashboard: sem conversao de fim de linha, para a esteira comparar byte a byte.
+docs/data/*.json -text

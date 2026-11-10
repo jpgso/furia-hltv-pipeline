@@ -5,7 +5,8 @@
     python main.py reconstruir   refaz silver e gold a partir da bronze, sem rede
 
 Para execução automática (n8n, agendador): --json imprime um resumo na saída padrão
-e --espera-desafio limita a espera pela verificação manual do Cloudflare.
+--espera-desafio limita a espera pela verificação manual do Cloudflare e --publicar
+envia os dados do dashboard ao GitHub (o GitHub Pages serve a pasta docs/).
 """
 import argparse
 import json
@@ -54,14 +55,14 @@ def new_matches(match_ids, db_path=None) -> list[dict]:
     return [dict(zip(cols, row)) for row in rows]
 
 
-def run(mode: str, limit: int | None = None) -> dict:
+def run(mode: str, limit: int | None = None, publish: bool = False) -> dict:
     from extract import bronze
-    from load import warehouse
+    from load import publish as publisher, warehouse
 
     start = time.time()
     logger.info(f"=== Esteira FURIA/HLTV | modo: {mode} ===")
     summary = {"modo": mode, "status": "ok", "mensagem": "", "baixadas": 0, "adiadas": 0,
-               "falhas": 0, "total_partidas": None, "partidas_novas": []}
+               "falhas": 0, "total_partidas": None, "partidas_novas": [], "publicacao": None}
     before = bronze.saved_match_ids()
     if mode != "reconstruir":
         try:
@@ -81,6 +82,11 @@ def run(mode: str, limit: int | None = None) -> dict:
         built = warehouse.build(reparse_all=(mode == "reconstruir"))
         summary["total_partidas"] = built.get("partidas_na_silver")
         summary["partidas_novas"] = new_matches(downloaded)
+        publisher.sync_dashboard_data()          # docs/data sempre acompanha a gold
+        if publish:
+            summary["publicacao"] = publisher.push_dashboard()
+            if summary["publicacao"]["status"] == "erro":
+                logger.error(f"Publicação do dashboard falhou: {summary['publicacao']['mensagem']}")
     except Exception as exc:
         summary["status"] = "erro"
         summary["mensagem"] = f"Construção do banco interrompida: {exc}"
@@ -100,6 +106,7 @@ if __name__ == "__main__":
     parser.add_argument("--limite", type=int, default=None, help="máximo de partidas a baixar nesta execução")
     parser.add_argument("--espera-desafio", type=int, default=None, metavar="SEGUNDOS",
                         help="espera máxima pela verificação do Cloudflare (execução automática)")
+    parser.add_argument("--publicar", action="store_true", help="envia os dados do dashboard (docs/data) ao GitHub")
     parser.add_argument("--json", action="store_true", help="imprime o resumo da execução em JSON na saída padrão")
     parser.add_argument("--json-arquivo", default=None, metavar="CAMINHO",
                         help="grava o mesmo resumo em um arquivo (para quem não consegue ler a saída padrão)")
@@ -107,7 +114,7 @@ if __name__ == "__main__":
     if args.espera_desafio is not None:
         settings.CHALLENGE_TIMEOUT = args.espera_desafio
         settings.EVENTS_CHALLENGE_TIMEOUT = min(settings.EVENTS_CHALLENGE_TIMEOUT, args.espera_desafio)
-    result = run(args.modo, args.limite)
+    result = run(args.modo, args.limite, args.publicar)
     # Só ASCII: o resumo é lido por outros programas (PowerShell, n8n) sem depender de codificação.
     text = json.dumps(result, ensure_ascii=True)
     if args.json_arquivo:

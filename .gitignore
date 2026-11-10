@@ -9,7 +9,7 @@ venv/
 .env
 *.env
 logs/
-data/
+/data/
 
 # Editor / SO
 .vscode/

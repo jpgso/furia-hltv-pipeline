@@ -28,20 +28,28 @@ Além das agregadas, a gold tem quatro tabelas no grão de mapa, `lineups`, `det
 
 As transformações estão em SQL puro, em [`sql/silver`](sql/silver) e [`sql/gold`](sql/gold).
 
-## Dashboard (protótipo)
+## Dashboard
 
-Duas páginas estáticas em [`prototipo/`](prototipo), que leem os JSON de `data/gold_export/`:
+**https://jpgso.github.io/furia-hltv-pipeline/**
+
+Site estático em [`docs/`](docs), servido pelo GitHub Pages:
 
 - `index.html`, visão geral: indicadores, a linha do tempo com todas as partidas, forma, mapas e elenco.
 - `analise.html`, análise detalhada em abas: resumo, mapas, jogadores, vetos, adversários, campeonatos e partidas.
 
-As duas têm os mesmos filtros (período, lineup, mapas, jogador, adversário, ambiente e formato) e recalculam tudo conforme o recorte. Para abrir, rode a esteira ao menos uma vez e sirva a pasta do projeto:
+As duas páginas têm os mesmos filtros (período, lineup, mapas, jogador, adversário, ambiente e formato) e recalculam tudo no navegador conforme o recorte.
+
+Os dados ficam em `docs/data/`: a cada execução a esteira copia para lá as tabelas gold que o site usa. Com `--publicar`, ela também faz o commit dessa pasta e o push; o GitHub Pages atualiza o site em seguida. Só há commit quando algum dado mudou.
 
 ```bash
-python -m http.server 8765
+python main.py diario --publicar
 ```
 
-Depois acesse `http://localhost:8765/prototipo/`. Ainda é um protótipo local; a publicação em uma URL pública é o próximo passo.
+Para ver o site localmente:
+
+```bash
+python -m http.server 8765 --directory docs
+```
 
 ## Como executar
 
@@ -107,18 +115,18 @@ O n8n precisa rodar **na mesma máquina** da esteira, instalado via Node.js (no 
 
    Assim o n8n roda escondido, sem depender de uma janela do PowerShell aberta.
 
-O que o fluxo executa é [`scripts/run_diario.ps1`](scripts/run_diario.ps1): abre o Chrome de depuração minimizado se preciso, roda a carga diária com espera curta pelo Cloudflare e grava em `data/ultima_execucao.json` uma linha de JSON com `status` (`ok`, `cloudflare`, `sem_chrome`, `erro`) e as partidas novas. O fluxo lê esse arquivo com `type`, porque no Windows o nó *Execute Command* não captura a saída de programas filhos. Se o Cloudflare pedir verificação, a janela do Chrome fica aberta para você resolvê-la, o aviso chega uma vez (no máximo um por dia para o mesmo problema) e a execução seguinte continua de onde parou.
+O que o fluxo executa é [`scripts/run_diario.ps1`](scripts/run_diario.ps1): abre o Chrome de depuração minimizado se preciso, roda a carga diária com espera curta pelo Cloudflare, publica os dados do dashboard quando há novidade e grava em `data/ultima_execucao.json` uma linha de JSON com `status` (`ok`, `cloudflare`, `sem_chrome`, `erro`) e as partidas novas. O fluxo lê esse arquivo com `type`, porque no Windows o nó *Execute Command* não captura a saída de programas filhos. Se o Cloudflare pedir verificação, a janela do Chrome fica aberta para você resolvê-la, o aviso chega uma vez (no máximo um por dia para o mesmo problema) e a execução seguinte continua de onde parou.
 
 ## Estrutura
 
 ```
-prototipo/   dashboard em HTML (visão geral e análise detalhada)
+docs/        dashboard publicado no GitHub Pages (páginas e dados)
 n8n/         fluxo de atualização automática (importável no n8n)
 scripts/     execução em segundo plano para automatizadores
 config/      caminhos, parâmetros e logging
 extract/     navegação (browser), camada bronze e extração incremental (crawler)
 transform/   leitura do HTML em registros (parsers)
-load/        banco DuckDB, execução do SQL e exportação da gold (warehouse)
+load/        banco DuckDB, execução do SQL e exportação da gold (warehouse); publicação do dashboard (publish)
 sql/         transformações silver e gold
 tests/       testes dos parsers e da construção das camadas
 ```
@@ -137,4 +145,4 @@ python -m pytest tests -q
 - O mapa `Default` (vantagem de mapa ou W.O.) conta no placar da série, mas fica fora das estatísticas por mapa (`sem_disputa`).
 - Título é a colocação `1st`; faixas como `1-2nd` não contam como título.
 - LAN ou online só é informado pela HLTV em parte das partidas, quase todas de 2021 em diante; nas demais o campo fica nulo.
-- Fonte dos dados: HLTV.org. O conteúdo bruto (`data/`) não é versionado neste repositório.
+- Fonte dos dados: HLTV.org. O conteúdo bruto (`data/`) não é versionado neste repositório; só as tabelas que o dashboard usa (`docs/data/`).
