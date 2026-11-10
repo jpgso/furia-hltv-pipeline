@@ -1,18 +1,18 @@
 /* Base visual compartilhada pelas duas páginas. */
-:root{--bg:#07080a;--panel:#101216;--line:#1e2229;--txt:#f3f4f6;--mut:#8a919e;--acc:#d7ff3e;--loss:#ff4d5e;--gold:#ffc53d}
+:root{--bg:#0f1115;--panel:#171a20;--line:#262b33;--txt:#f3f4f6;--mut:#8a919e;--acc:#3fb37f;--loss:#ff4d5e;--gold:#ffc53d;--ct:#6aa9ff;--tr:#ffb04a}
 *{box-sizing:border-box;margin:0}
-.mono{font-family:"JetBrains Mono",monospace}
-.brand{font-family:Anton;font-size:20px;letter-spacing:.06em;color:var(--txt);text-decoration:none}
+.mono{font-variant-numeric:tabular-nums}
+.brand{font-weight:700;font-size:17px;letter-spacing:.02em;color:var(--txt);text-decoration:none}
 .brand b{color:var(--acc);font-weight:400}
 
 /* Painel de filtros compartilhado pelas duas páginas. */
-.filtros{background:rgba(7,8,10,.94);border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:14px}
+.filtros{background:rgba(15,17,21,.94);border:1px solid var(--line);border-radius:8px;padding:14px 16px;font-size:14px}
 .fl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 12px;align-items:end}
 .fl label{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin-bottom:4px}
-.filtros select,.filtros input[type=date],.filtros input[type=text]{width:100%;height:36px;background:#0b0d10;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:0 10px;font:inherit;color-scheme:dark}
+.filtros select,.filtros input[type=date],.filtros input[type=text]{width:100%;height:36px;background:#13161b;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:0 10px;font:inherit;color-scheme:dark}
 .filtros select:focus,.filtros input:focus{outline:1px solid var(--acc)}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;align-items:center}
-.chip{border:1px solid var(--line);background:#0b0d10;color:var(--mut);border-radius:999px;padding:5px 12px;font-size:12px;cursor:pointer;user-select:none}
+.chip{border:1px solid var(--line);background:#13161b;color:var(--mut);border-radius:999px;padding:5px 12px;font-size:12px;cursor:pointer;user-select:none}
 .chip:hover{border-color:var(--mut)}
 .chip.on{background:var(--acc);border-color:var(--acc);color:#000;font-weight:600}
 .chips .rot{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin-right:4px}

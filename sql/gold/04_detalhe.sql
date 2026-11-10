@@ -19,7 +19,7 @@ SELECT
     l.jogadores,
     count(DISTINCT l.partida_id)                          AS partidas,
     count(*)                                              AS mapas,
-    round(100.0 * count(*) FILTER (WHERE fm.resultado = 'V') / count(*), 1) AS aproveitamento_mapas,
+    pct_vitorias(fm.resultado) AS aproveitamento_mapas,
     min(fp.data)                                          AS primeira_partida,
     max(fp.data)                                          AS ultima_partida
 FROM gold.base_lineup_mapa l

@@ -66,7 +66,7 @@ SELECT
     count(*)                                                            AS jogados,
     count(*) FILTER (WHERE fm.resultado = 'V')                          AS vitorias,
     count(*) FILTER (WHERE fm.resultado = 'D')                          AS derrotas,
-    round(100.0 * count(*) FILTER (WHERE fm.resultado = 'V') / count(*), 1) AS aproveitamento,
+    pct_vitorias(fm.resultado) AS aproveitamento,
     sum(fm.rounds_furia) - sum(fm.rounds_adversario)                    AS saldo_rounds
 FROM silver.fato_mapa fm
 JOIN silver.fato_partida fp USING (partida_id)

@@ -68,7 +68,9 @@ def push_dashboard(repo_dir: Path | None = None, data_dir: Path | None = None) -
         if foreign:
             return _error(f"há commits locais ainda não enviados fora de {rel} ({foreign[0]}...); envie-os antes")
 
-        _git(repo, "add", "--", rel)
+        add = _git(repo, "add", "--", rel)
+        if add.returncode != 0:
+            return _error(f"git add falhou: {(add.stderr or add.stdout).strip()}")
         if _git(repo, "diff", "--cached", "--quiet", "--", rel).returncode != 0:
             stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
             commit = _git(repo, "commit", "-m", f"Atualiza dados do dashboard ({stamp})", "--", rel)

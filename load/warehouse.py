@@ -7,7 +7,7 @@ import pyarrow as pa
 
 from config import get_logger, settings
 from extract import bronze
-from transform.parsers import parse_events_page, parse_match_file, parse_results_page
+from transform.parsers import parse_events_page, parse_match_page, parse_results_page
 
 logger = get_logger(__name__)
 
@@ -90,11 +90,16 @@ def _delete_ids(con, table: str, ids, keep: bool = False) -> None:
     con.unregister("_ids")
 
 
+def _parse_match_file(path: Path) -> dict:
+    return parse_match_page(bronze.load(path), bronze.match_id_of(path))
+
+
 def _parse_matches(paths: list[Path]) -> list[dict]:
+    """Poucos arquivos são lidos em sequência; uma releitura completa usa todos os núcleos."""
     if len(paths) < 40:
-        return [parse_match_file(p) for p in paths]
+        return [_parse_match_file(p) for p in paths]
     with ProcessPoolExecutor() as pool:
-        return list(pool.map(parse_match_file, [str(p) for p in paths], chunksize=8))
+        return list(pool.map(_parse_match_file, paths, chunksize=8))
 
 
 def load_staging(con, bronze_root: Path | None = None, reparse_all: bool = False) -> int:
@@ -115,7 +120,7 @@ def load_staging(con, bronze_root: Path | None = None, reparse_all: bool = False
         _insert(con, "event_placements", parse_events_page(bronze.load(events[-1])))
 
     # A bronze é a fonte da verdade: partida sem arquivo sai do banco.
-    files = {int(p.name.split(".")[0]): p for p in bronze.list_files(bronze.MATCHES, bronze_root)}
+    files = {bronze.match_id_of(p): p for p in bronze.list_files(bronze.MATCHES, bronze_root)}
     for table in _MATCH_TABLES:
         _delete_ids(con, table, files.keys(), keep=True)
 
@@ -155,7 +160,7 @@ def export_gold(con, export_dir: Path | None = None) -> list[str]:
     export_dir = Path(export_dir or settings.EXPORT_DIR)
     export_dir.mkdir(parents=True, exist_ok=True)
     for table in settings.DASHBOARD_TABLES:
-        target = (export_dir / f"{table}.json").as_posix()
+        target = (export_dir / f"{table}.json").as_posix().replace("'", "''")  # pasta com apóstrofo no nome
         con.execute(f"COPY gold.{table} TO '{target}' (FORMAT JSON, ARRAY true)")
     return list(settings.DASHBOARD_TABLES)
 

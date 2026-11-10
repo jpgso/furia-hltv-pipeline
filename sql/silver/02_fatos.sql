@@ -125,8 +125,8 @@ SELECT
     coalesce(c.event_id, e.evento_id)                                AS evento_id,
     c.evento_nome,
     c.colocacao,
-    TRY_CAST(regexp_extract(c.colocacao, '^(\d+)', 1) AS INTEGER)    AS melhor_posicao,
-    TRY_CAST(regexp_extract(c.colocacao, '(\d+)\D*$', 1) AS INTEGER) AS pior_posicao
+    posicao_inicial(c.colocacao)                                       AS melhor_posicao,
+    posicao_final(c.colocacao)                                         AS pior_posicao
 FROM staging.event_placements c
 LEFT JOIN silver.dim_evento e
        ON c.event_id IS NULL AND lower(trim(c.evento_nome)) = lower(trim(e.nome));

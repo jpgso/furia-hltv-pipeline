@@ -12,7 +12,7 @@ from transform.parsers import parse_events_page, parse_match_page, parse_results
 
 
 # ------------------------------------------------------------------- parsers
-def test_results_page_lists_matches_and_total():
+def test_pagina_de_resultados_lista_partidas_e_total():
     page = parse_results_page(fixtures.results_page())
     assert page["total"] == 2
     assert [m["match_id"] for m in page["matches"]] == [2367598, 2333124]
@@ -22,7 +22,7 @@ def test_results_page_lists_matches_and_total():
     assert (first["formato"], first["estrelas"], first["unix_ms"]) == ("bo3", 1, 1698742800000)
 
 
-def test_match_header_identifies_teams_event_and_winner():
+def test_cabecalho_identifica_times_evento_e_vencedor():
     match = parse_match_page(fixtures.match_new_layout(), 2367598)["match"]
     assert (match["team1_id"], match["team1_resultado"], match["team1_score"]) == (11948, "lost", 0)
     assert (match["team2_id"], match["team2_resultado"], match["team2_score"]) == (8297, "won", 2)
@@ -31,7 +31,7 @@ def test_match_header_identifies_teams_event_and_winner():
     assert match["encerrada"] and match["unix_ms"] == 1698742800000
 
 
-def test_maps_skip_unplayed_and_split_sides():
+def test_mapas_separam_lados_e_marcam_o_nao_jogado():
     maps = parse_match_page(fixtures.match_new_layout(), 2367598)["maps"]
     assert [(m["mapa"], m["jogado"]) for m in maps] == [("Vertigo", True), ("Mirage", True), ("Nuke", False)]
     vertigo = maps[0]
@@ -42,14 +42,14 @@ def test_maps_skip_unplayed_and_split_sides():
     assert vertigo["escolhido_por_team_id"] == 8297 and maps[1]["escolhido_por_team_id"] == 11948
 
 
-def test_overtime_rounds_are_separated():
+def test_rounds_de_prorrogacao_ficam_separados():
     mirage = parse_match_page(fixtures.match_old_layout(), 2333124)["maps"][1]
     assert (mirage["team1_score"], mirage["team2_score"]) == (19, 15)
     assert (mirage["team1_ot"], mirage["team2_ot"]) == (4, 0)
     assert mirage["team1_tr"] + mirage["team1_ct"] + mirage["team1_ot"] == 19
 
 
-def test_vetos_are_one_row_per_action():
+def test_vetos_viram_uma_linha_por_acao():
     vetos = parse_match_page(fixtures.match_new_layout(), 2367598)["vetos"]
     assert len(vetos) == 7
     assert (vetos[0]["team_id"], vetos[0]["acao"], vetos[0]["mapa"]) == (8297, "removed", "Anubis")
@@ -57,7 +57,7 @@ def test_vetos_are_one_row_per_action():
     assert (vetos[6]["team_id"], vetos[6]["acao"], vetos[6]["mapa"]) == (None, "left over", "Nuke")
 
 
-def test_player_stats_read_by_css_class_not_position():
+def test_estatisticas_sao_lidas_pela_classe_css():
     stats = parse_match_page(fixtures.match_new_layout(), 2367598)["player_stats"]
     assert {s["mapstats_id"] for s in stats} == {165657, 165660}  # 'all maps' fica de fora
     row = next(s for s in stats if s["mapstats_id"] == 165657 and s["nick"] == "KSCERATO" and s["lado"] == "TOTAL")
@@ -68,7 +68,7 @@ def test_player_stats_read_by_css_class_not_position():
     assert {s["lado"] for s in stats} == {"TOTAL", "CT", "TR"}
 
 
-def test_old_layout_has_no_swing_and_no_eco_data():
+def test_layout_antigo_nao_tem_swing_nem_dados_eco():
     stats = parse_match_page(fixtures.match_old_layout(), 2333124)["player_stats"]
     row = next(s for s in stats if s["mapstats_id"] == 85615 and s["nick"] == "arT")
     assert (row["kills"], row["deaths"], row["swing_pct"]) == (25, 15, None)
@@ -76,7 +76,7 @@ def test_old_layout_has_no_swing_and_no_eco_data():
     assert (row["adr"], row["kast_pct"], row["rating"], row["rating_versao"]) == (95.2, 76.9, 1.45, "2.0")
 
 
-def test_events_page_and_challenge_detection():
+def test_pagina_de_eventos_e_deteccao_do_cloudflare():
     events = parse_events_page(fixtures.events_page())
     assert events[0] == {"event_id": 7289, "evento_nome": "Thunderpick World Championship 2023", "colocacao": "5-8th"}
     assert is_challenge(fixtures.challenge_page())
@@ -95,7 +95,7 @@ def _build(tmp_path):
     return summary, db, export, root
 
 
-def test_silver_is_in_furia_perspective(tmp_path):
+def test_silver_fica_na_otica_da_furia(tmp_path):
     summary, db, _, _ = _build(tmp_path)
     assert summary["partidas_interpretadas"] == 2 and summary["partidas_na_silver"] == 2
     con = warehouse.connect(db)
@@ -118,12 +118,12 @@ def test_silver_is_in_furia_perspective(tmp_path):
     con.close()
 
 
-def test_gold_tables_and_export(tmp_path):
+def test_tabelas_gold_e_exportacao(tmp_path):
     _, db, export, _ = _build(tmp_path)
     con = warehouse.connect(db)
     q = lambda sql: con.execute(sql).fetchall()
-    assert q("SELECT partidas, vitorias, derrotas, aproveitamento, mapas_vencidos, mapas_perdidos, sequencia_atual, titulos "
-             "FROM gold.kpis_gerais") == [(2, 1, 1, 50.0, 3, 2, 1, 1)]
+    assert q("SELECT partidas, vitorias, derrotas, aproveitamento, mapas_vencidos, mapas_perdidos, aproveitamento_mapas, "
+             "sequencia_atual, titulos FROM gold.kpis_gerais") == [(2, 1, 1, 50.0, 3, 2, 60.0, 1, 1)]
     assert q("SELECT adversario, resultado, mapas, sequencia FROM gold.partidas ORDER BY data") == [
         ("Lazarus", "D", "Overpass 16-10, Mirage 15-19, Inferno 9-16", -1),
         ("Nouns", "V", "Vertigo 13-5, Mirage 13-7", 1)]
@@ -141,7 +141,7 @@ def test_gold_tables_and_export(tmp_path):
     assert [p["adversario"] for p in exported] == ["Nouns", "Lazarus"]
 
 
-def test_rebuild_is_incremental_and_idempotent(tmp_path):
+def test_reconstrucao_e_incremental_e_idempotente(tmp_path):
     _, db, export, root = _build(tmp_path)
     again = warehouse.build(bronze_root=root, db_path=db, export_dir=export)
     assert again["partidas_interpretadas"] == 0 and again["partidas_na_silver"] == 2
@@ -153,7 +153,7 @@ def test_rebuild_is_incremental_and_idempotent(tmp_path):
 
 
 # ------------------------------------------------------ resumo para automação
-def test_failure_is_classified_for_automation():
+def test_falha_e_classificada_para_a_automacao():
     from extract.browser import BrowserUnavailable, ChallengeError, PageLoadError
     from main import classify_failure
 
@@ -163,7 +163,7 @@ def test_failure_is_classified_for_automation():
     assert classify_failure(ValueError("x")) == "erro"
 
 
-def test_new_matches_summary_comes_from_gold(tmp_path):
+def test_resumo_de_partidas_novas_vem_da_gold(tmp_path):
     from main import new_matches
 
     _, db, _, _ = _build(tmp_path)
@@ -176,7 +176,7 @@ def test_new_matches_summary_comes_from_gold(tmp_path):
 
 
 # ------------------------------------------------ gold no grão de mapa (filtros)
-def test_detail_tables_feed_dashboard_filters(tmp_path):
+def test_tabelas_de_detalhe_alimentam_os_filtros(tmp_path):
     _, db, export, _ = _build(tmp_path)
     con = warehouse.connect(db)
     q = lambda sql: con.execute(sql).fetchall()
@@ -202,7 +202,7 @@ def test_detail_tables_feed_dashboard_filters(tmp_path):
 
 
 # ------------------------------------------------------ publicação do dashboard
-def test_dashboard_data_sync_only_reports_real_changes(tmp_path):
+def test_copia_dos_dados_so_acusa_mudanca_real(tmp_path):
     from config import settings
     from load import publish
 
@@ -220,7 +220,7 @@ def test_dashboard_data_sync_only_reports_real_changes(tmp_path):
     assert (dest / "lineups.json").read_text(encoding="utf-8") == "[]"
 
 
-def test_dashboard_push_commits_only_the_data_folder(tmp_path):
+def test_publicacao_envia_so_a_pasta_de_dados(tmp_path):
     import subprocess
     from load import publish
 
@@ -253,7 +253,7 @@ def test_dashboard_push_commits_only_the_data_folder(tmp_path):
 
 
 # ------------------------------------------------------- consistência do banco
-def test_bronze_is_the_source_of_truth(tmp_path):
+def test_bronze_e_a_fonte_da_verdade(tmp_path):
     _, db, export, root = _build(tmp_path)
     (root / bronze.MATCHES / "2333124.html.gz").unlink()
     assert warehouse.build(bronze_root=root, db_path=db, export_dir=export)["partidas_na_silver"] == 1
@@ -262,7 +262,7 @@ def test_bronze_is_the_source_of_truth(tmp_path):
     con.close()
 
 
-def test_results_listing_accumulates_across_runs(tmp_path):
+def test_lista_de_resultados_acumula_entre_execucoes(tmp_path):
     import re
 
     _, db, export, root = _build(tmp_path)
@@ -276,7 +276,7 @@ def test_results_listing_accumulates_across_runs(tmp_path):
     con.close()
 
 
-def test_staging_schema_change_forces_reread(tmp_path):
+def test_mudanca_de_esquema_forca_releitura(tmp_path):
     _, db, export, root = _build(tmp_path)
     con = warehouse.connect(db)
     con.execute("ALTER TABLE staging.match_vetos ADD COLUMN coluna_antiga VARCHAR")
@@ -285,7 +285,7 @@ def test_staging_schema_change_forces_reread(tmp_path):
     assert again["partidas_interpretadas"] == 2 and again["partidas_na_silver"] == 2
 
 
-def test_brasilia_time_follows_daylight_saving(tmp_path):
+def test_horario_de_brasilia_segue_o_horario_de_verao(tmp_path):
     con = warehouse.connect(tmp_path / "t.duckdb")
     warehouse.run_sql_layer(con, "silver")
     # 2018-12-15 01:30 UTC: 23:30 do dia 14 em horário de verão (UTC-2); 2023-12-15 01:30 UTC: 22:30 (UTC-3)

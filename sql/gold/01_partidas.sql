@@ -63,6 +63,7 @@ WITH p AS (
 ),
 m AS (
     SELECT
+        count(*)                                             AS mapas,
         count(*) FILTER (WHERE resultado = 'V')              AS mapas_vencidos,
         count(*) FILTER (WHERE resultado = 'D')              AS mapas_perdidos,
         sum(rounds_furia)                                    AS rounds_vencidos,
@@ -81,7 +82,7 @@ SELECT
     p.partidas, p.vitorias, p.derrotas, p.empates,
     round(100.0 * p.vitorias / nullif(p.partidas, 0), 1)                                  AS aproveitamento,
     m.mapas_vencidos, m.mapas_perdidos,
-    round(100.0 * m.mapas_vencidos / nullif(m.mapas_vencidos + m.mapas_perdidos, 0), 1)   AS aproveitamento_mapas,
+    round(100.0 * m.mapas_vencidos / nullif(m.mapas, 0), 1)                               AS aproveitamento_mapas,
     m.rounds_vencidos, m.rounds_perdidos,
     p.sequencia_atual, p.maior_sequencia_vitorias,
     e.campeonatos, e.titulos, e.top_4,
@@ -97,7 +98,7 @@ SELECT
     count(*)                                                       AS partidas,
     count(*) FILTER (WHERE resultado = 'V')                        AS vitorias,
     count(*) FILTER (WHERE resultado = 'D')                        AS derrotas,
-    round(100.0 * count(*) FILTER (WHERE resultado = 'V') / count(*), 1) AS aproveitamento,
+    pct_vitorias(resultado) AS aproveitamento,
     sum(mapas_vencidos)                                            AS mapas_vencidos,
     sum(mapas_perdidos)                                            AS mapas_perdidos,
     sum(rounds_vencidos) - sum(rounds_perdidos)                    AS saldo_rounds
@@ -112,7 +113,7 @@ SELECT
     count(*)                                                       AS partidas,
     count(*) FILTER (WHERE resultado = 'V')                        AS vitorias,
     count(*) FILTER (WHERE resultado = 'D')                        AS derrotas,
-    round(100.0 * count(*) FILTER (WHERE resultado = 'V') / count(*), 1) AS aproveitamento,
+    pct_vitorias(resultado) AS aproveitamento,
     sum(mapas_vencidos)                                            AS mapas_vencidos,
     sum(mapas_perdidos)                                            AS mapas_perdidos,
     max(data)                                                      AS ultima_partida,
@@ -136,7 +137,7 @@ SELECT
     count(*)                                                       AS partidas,
     count(*) FILTER (WHERE fp.resultado = 'V')                     AS vitorias,
     count(*) FILTER (WHERE fp.resultado = 'D')                     AS derrotas,
-    round(100.0 * count(*) FILTER (WHERE fp.resultado = 'V') / count(*), 1) AS aproveitamento
+    pct_vitorias(fp.resultado) AS aproveitamento
 FROM silver.fato_partida fp
 JOIN silver.dim_evento e USING (evento_id)
 GROUP BY ALL

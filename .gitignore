@@ -3,19 +3,19 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+.pytest_cache/
 .ipynb_checkpoints/
 
-# Artefatos gerados pela esteira (recriados a cada execução)
+# Dados e logs gerados pela esteira (recriados a cada execução)
+/data/
+logs/
+
+# Segredos locais
 .env
 *.env
-logs/
-/data/
 
 # Editor / SO
 .vscode/
 .idea/
 Thumbs.db
 desktop.ini
-
-# Ferramentas locais
-.pytest_cache/

@@ -3,7 +3,14 @@
 -- respeitando o horário de verão que existiu até 2019.
 
 CREATE OR REPLACE MACRO data_hora_brt(ms) AS timezone('America/Sao_Paulo', to_timestamp(ms / 1000.0));
-CREATE OR REPLACE MACRO data_brt(ms) AS CAST(timezone('America/Sao_Paulo', to_timestamp(ms / 1000.0)) AS DATE);
+CREATE OR REPLACE MACRO data_brt(ms) AS CAST(data_hora_brt(ms) AS DATE);
+
+-- Colocação em faixa, como '5-8th': a primeira e a última posição da faixa.
+CREATE OR REPLACE MACRO posicao_inicial(colocacao) AS TRY_CAST(regexp_extract(colocacao, '^(\d+)', 1) AS INTEGER);
+CREATE OR REPLACE MACRO posicao_final(colocacao) AS TRY_CAST(regexp_extract(colocacao, '(\d+)\D*$', 1) AS INTEGER);
+
+-- Percentual de vitórias de um grupo de partidas ou de mapas.
+CREATE OR REPLACE MACRO pct_vitorias(r) AS round(100.0 * count(*) FILTER (WHERE r = 'V') / count(*), 1);
 
 -- Times: o nome mais recente prevalece (times mudam de nome).
 CREATE OR REPLACE TABLE silver.dim_time AS
@@ -65,8 +72,8 @@ SELECT
     e.data_fim,
     year(e.data_inicio)                                              AS ano,
     c.colocacao,
-    TRY_CAST(regexp_extract(c.colocacao, '^(\d+)', 1) AS INTEGER)    AS melhor_posicao,
-    TRY_CAST(regexp_extract(c.colocacao, '(\d+)\D*$', 1) AS INTEGER) AS pior_posicao
+    posicao_inicial(c.colocacao)                                       AS melhor_posicao,
+    posicao_final(c.colocacao)                                         AS pior_posicao
 FROM eventos e
 LEFT JOIN colocacoes c
        ON c.event_id = e.evento_id

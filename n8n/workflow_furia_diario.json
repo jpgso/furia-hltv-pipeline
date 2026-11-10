@@ -7,7 +7,7 @@
           "init"
         ]
       },
-      "id": "a1f0c0de-0002-4000-8000-000000000002",
+      "id": "9b95326f-ff63-402c-b00a-45518b303017",
       "name": "Ao iniciar o n8n",
       "type": "n8n-nodes-base.n8nTrigger",
       "typeVersion": 1,
@@ -21,31 +21,31 @@
         "assignments": {
           "assignments": [
             {
-              "id": "c0000001-0000-4000-8000-000000000001",
+              "id": "db3102a4-3574-4a6a-b736-d855f59efdfe",
               "name": "pasta_projeto",
               "value": "C:\\caminho\\para\\furia_hltv_pipeline",
               "type": "string"
             },
             {
-              "id": "c0000001-0000-4000-8000-000000000002",
+              "id": "15537514-19c8-45fa-ae18-e2398da46597",
               "name": "whatsapp_telefone",
               "value": "+5500000000000",
               "type": "string"
             },
             {
-              "id": "c0000001-0000-4000-8000-000000000003",
+              "id": "f5d4a1da-4750-4d57-8b94-5c74eef76810",
               "name": "email_remetente",
               "value": "seu-email@exemplo.com",
               "type": "string"
             },
             {
-              "id": "c0000001-0000-4000-8000-000000000004",
+              "id": "b2e74848-7ddc-4540-a265-43957f9e8c53",
               "name": "email_destino",
               "value": "seu-email@exemplo.com",
               "type": "string"
             },
             {
-              "id": "c0000001-0000-4000-8000-000000000005",
+              "id": "0e54d545-c154-454a-a3d0-3b950beb4e3a",
               "name": "url_dashboard",
               "value": "https://jpgso.github.io/furia-hltv-pipeline/",
               "type": "string"
@@ -54,7 +54,7 @@
         },
         "options": {}
       },
-      "id": "a1f0c0de-0003-4000-8000-000000000003",
+      "id": "360ab4a0-0ee8-432c-b074-f91e9d8b42f3",
       "name": "Configuracao",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -67,7 +67,7 @@
       "parameters": {
         "command": "=powershell -NoProfile -ExecutionPolicy Bypass -File \"{{ $json.pasta_projeto }}\\scripts\\run_diario.ps1\" > nul 2>&1 & type \"{{ $json.pasta_projeto }}\\data\\ultima_execucao.json\""
       },
-      "id": "a1f0c0de-0004-4000-8000-000000000004",
+      "id": "b56d196e-0cee-48f3-a003-fdfa8d0c6dc6",
       "name": "Rodar esteira",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
@@ -80,7 +80,7 @@
       "parameters": {
         "jsCode": "// Le o resumo em JSON que o script devolve e decide se ha algo a avisar.\n// Sem novidade, devolve lista vazia: os nos de notificacao nao rodam.\nconst cfg = $('Configuracao').first().json;\nconst saida = String($input.first().json.stdout || '').trim();\nconst linha = saida.split(/\\r?\\n/).filter(l => l.trim().startsWith('{')).pop();\n\nlet r;\ntry {\n  r = JSON.parse(linha);\n} catch (e) {\n  r = { status: 'erro', mensagem: 'Saida inesperada do script: ' + saida.slice(0, 300), partidas_novas: [] };\n}\n\nconst memoria = $getWorkflowStaticData('global');\nconst agora = Date.now();\nconst UM_DIA = 24 * 60 * 60 * 1000;\nconst rotulo = { V: 'Vitoria', D: 'Derrota', E: 'Empate' };\nconst novas = r.partidas_novas || [];\nconst pub = r.publicacao || {};\n\nlet assunto = null;\nlet texto = null;\n\nif (novas.length) {\n  const linhas = novas.map(p =>\n    `${rotulo[p.resultado] || p.resultado}: FURIA ${p.placar_furia} x ${p.placar_adversario} ${p.adversario} (${p.data})\\n` +\n    `${p.evento || ''}\\n${p.mapas || ''}`);\n  const extra = r.baixadas > novas.length ? `\\n\\n(+${r.baixadas - novas.length} partida(s) mais antigas)` : '';\n  assunto = `FURIA: ${r.baixadas} partida(s) nova(s) no dashboard`;\n  texto = `${assunto}\\n\\n${linhas.join('\\n\\n')}${extra}`;\n  if (pub.status === 'publicado' && cfg.url_dashboard) texto += `\\n\\nDashboard atualizado: ${cfg.url_dashboard}`;\n}\n\n// Problema na carga ou na publicacao do dashboard.\nconst problema = r.status !== 'ok' ? r.status : (pub.status === 'erro' ? 'publicacao' : null);\nif (problema) {\n  // O mesmo problema so e avisado de novo depois de 24 horas.\n  const repetido = memoria.ultimoErro === problema && agora - (memoria.avisoErroEm || 0) < UM_DIA;\n  if (!repetido) {\n    const aviso = problema === 'cloudflare'\n      ? 'A HLTV pediu a verificacao do Cloudflare. Resolva-a na janela do Chrome que ficou aberta; a proxima execucao continua de onde parou.'\n      : problema === 'publicacao'\n        ? `Os dados foram atualizados, mas o envio do dashboard ao GitHub falhou: ${pub.mensagem}`\n        : `A carga diaria falhou (${r.status}): ${r.mensagem}`;\n    assunto = assunto || 'FURIA: a carga diaria precisa de atencao';\n    texto = texto ? `${texto}\\n\\n${aviso}` : `${assunto}\\n\\n${aviso}`;\n    memoria.avisoErroEm = agora;\n  }\n  memoria.ultimoErro = problema;\n} else {\n  memoria.ultimoErro = null;\n}\n\nif (!texto) return [];\nreturn [{ json: { ...cfg, status: r.status, assunto, texto } }];"
       },
-      "id": "a1f0c0de-0005-4000-8000-000000000005",
+      "id": "abed29b7-424a-4b98-b00d-586855f9a482",
       "name": "Montar aviso",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -107,16 +107,21 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 20000
+        }
       },
-      "id": "a1f0c0de-0006-4000-8000-000000000006",
+      "id": "8bd9d072-20f9-4864-b78e-4439345993ea",
       "name": "WhatsApp (CallMeBot)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
         960,
-        0
-      ]
+        200
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -127,13 +132,13 @@
         "text": "={{ $json.texto }}",
         "options": {}
       },
-      "id": "a1f0c0de-0007-4000-8000-000000000007",
+      "id": "9ef283b1-e06a-42f6-b7dd-70c54155e403",
       "name": "E-mail",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
         960,
-        200
+        0
       ],
       "onError": "continueRegularOutput"
     },
@@ -141,13 +146,13 @@
       "parameters": {
         "jsCode": "// O CallMeBot responde com sucesso HTTP mesmo quando recusa a mensagem.\n// Aqui a recusa vira erro, para a execucao aparecer como falha no n8n.\nconst resposta = JSON.stringify($input.first().json);\nif (/APIKey is invalid|color:\\s*red/i.test(resposta)) {\n  throw new Error('O CallMeBot recusou a mensagem: ' + resposta.replace(/<[^>]+>/g, ' ').slice(-200));\n}\nreturn $input.all();"
       },
-      "id": "a1f0c0de-0008-4000-8000-000000000008",
+      "id": "d0b8d12c-0cf3-4bc5-8c19-802e85f0f2de",
       "name": "Conferir WhatsApp",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1200,
-        0
+        200
       ]
     }
   ],
@@ -189,12 +194,12 @@
       "main": [
         [
           {
-            "node": "WhatsApp (CallMeBot)",
+            "node": "E-mail",
             "type": "main",
             "index": 0
           },
           {
-            "node": "E-mail",
+            "node": "WhatsApp (CallMeBot)",
             "type": "main",
             "index": 0
           }

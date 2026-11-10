@@ -1,6 +1,6 @@
 """Leitura do HTML da HLTV em registros estruturados.
 
-Funções puras (HTML entra, dicionários saem), sem rede e sem banco,
+Funções puras (HTML entra, dicionários saem), sem rede, sem disco e sem banco,
 para poderem ser testadas e executadas em paralelo. As células são localizadas
 pela classe CSS, nunca pela posição: a HLTV mantém colunas ocultas (eK-eD,
 eADR, eKAST) e mudou o layout ao longo dos anos.
@@ -8,8 +8,6 @@ eADR, eKAST) e mudou o layout ao longo dos anos.
 import re
 
 from bs4 import BeautifulSoup
-
-from extract import bronze
 
 _MATCH_HREF = re.compile(r"/matches/(\d+)/([^/?#\"]+)")
 _VETO_ACTION = re.compile(r"^(\d+)\.\s+(.+?)\s+(removed|picked)\s+(.+)$", re.I)
@@ -330,12 +328,6 @@ def parse_match_page(html: str, match_id: int) -> dict:
         "vetos": vetos,
         "player_stats": _parse_player_stats(soup, match_id, teams),
     }
-
-
-def parse_match_file(path) -> dict:
-    """Ponto de entrada para processamento paralelo: lê o .html.gz e interpreta."""
-    match_id = int(str(path).replace("\\", "/").rsplit("/", 1)[-1].split(".")[0])
-    return parse_match_page(bronze.load(path), match_id)
 
 
 # ----------------------------------------------------------- página de eventos

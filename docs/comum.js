@@ -1,12 +1,31 @@
 // Base de dados, filtros e agregações compartilhados pelas duas páginas do dashboard.
 const D = 'data/';
-const get = f => fetch(D + f + '.json').then(r => r.json());
+const get = f => fetch(D + f + '.json').then(r => { if (!r.ok) throw new Error(`${f}.json: HTTP ${r.status}`); return r.json(); });
 const $ = id => document.getElementById(id);
 const fmt = (n, d) => { d = typeof d === 'number' ? d : 0; return n == null || isNaN(n) ? '–' : Number(n).toLocaleString('pt-BR', {minimumFractionDigits: d, maximumFractionDigits: d}); };
 const pct = (a, b) => b ? 100 * a / b : null;
 const dataBR = s => s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4);
 // Os textos vêm de páginas de terceiros: sempre escapados antes de virar HTML.
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+
+// Cores dos gráficos: as mesmas variáveis do comum.css.
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const ACC = css('--acc'), LOSS = css('--loss'), GOLD = css('--gold'), MUT = css('--mut'), LINE = css('--line'), TXT = css('--txt');
+const COR_CT = css('--ct'), COR_TR = css('--tr');
+const corResultado = r => r === 'V' ? ACC : r === 'D' ? LOSS : '#888';
+
+// 'AAAA-MM-DD' n meses antes, calculado em UTC para não depender do fuso do navegador.
+function mesesAntes(data, n) {
+  const [a, m, d] = data.split('-').map(Number), ini = new Date(Date.UTC(a, m - 1 - n, 1));
+  const ultimoDia = new Date(Date.UTC(ini.getUTCFullYear(), ini.getUTCMonth() + 1, 0)).getUTCDate();
+  ini.setUTCDate(Math.min(d, ultimoDia));
+  return ini.toISOString().slice(0, 10);
+}
+
+function falhaDeCarga(erro, onde) {
+  console.error(erro);
+  onde.innerHTML = '<div class="vazio">Não foi possível carregar os dados. Recarregue a página em instantes.</div>';
+}
 
 const B = {};                     // base carregada
 const F = {mapas: new Set()};     // mapas marcados (os demais filtros ficam nos próprios campos)
@@ -66,7 +85,7 @@ function montaFiltros(aoMudar) {
   $('f-pre').onchange = () => {
     const v = $('f-pre').value;
     if (v === '') { $('f-de').value = $('f-ate').value = ''; }
-    else if (v[0] === 'm') { const d = new Date(B.max); d.setMonth(d.getMonth() - +v.slice(1)); $('f-de').value = d.toISOString().slice(0, 10); $('f-ate').value = B.max; }
+    else if (v[0] === 'm') { $('f-de').value = mesesAntes(B.max, +v.slice(1)); $('f-ate').value = B.max; }
     else if (v !== 'x') { $('f-de').value = v + '-01-01'; $('f-ate').value = v + '-12-31'; }
     aoMudar();
   };

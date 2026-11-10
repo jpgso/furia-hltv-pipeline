@@ -100,11 +100,18 @@ def run(mode: str, limit: int | None = None, publish: bool = False) -> dict:
     return summary
 
 
+def _non_negative(text: str) -> int:
+    value = int(text)
+    if value < 0:
+        raise argparse.ArgumentTypeError("use um número inteiro maior ou igual a zero")
+    return value
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Esteira medalhão FURIA x HLTV")
     parser.add_argument("modo", nargs="?", default="diario", choices=["diario", "historico", "reconstruir"])
-    parser.add_argument("--limite", type=int, default=None, help="máximo de partidas a baixar nesta execução")
-    parser.add_argument("--espera-desafio", type=int, default=None, metavar="SEGUNDOS",
+    parser.add_argument("--limite", type=_non_negative, default=None, help="máximo de partidas a baixar nesta execução")
+    parser.add_argument("--espera-desafio", type=_non_negative, default=None, metavar="SEGUNDOS",
                         help="espera máxima pela verificação do Cloudflare (execução automática)")
     parser.add_argument("--publicar", action="store_true", help="envia os dados do dashboard (docs/data) ao GitHub")
     parser.add_argument("--json", action="store_true", help="imprime o resumo da execução em JSON na saída padrão")

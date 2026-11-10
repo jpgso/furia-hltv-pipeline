@@ -1,4 +1,4 @@
-# FURIA x HLTV, esteira de dados em arquitetura medalhão
+# FURIA x HLTV: esteira de dados em arquitetura medalhão
 
 Coleta o histórico de partidas de CS da FURIA na [HLTV](https://www.hltv.org) e o organiza em três camadas, prontas para alimentar um dashboard. Tudo roda localmente, só com ferramentas gratuitas.
 
@@ -22,9 +22,9 @@ Como a bronze guarda o HTML original, corrigir ou ampliar o que é lido não exi
 | `fato_jogador_mapa` | uma linha por jogador × mapa × lado (TOTAL, CT, TR) |
 | `fato_colocacao_evento` | uma linha por campeonato disputado |
 
-**Gold**, `kpis_gerais`, `partidas`, `desempenho_mensal`, `confronto_direto`, `desempenho_por_evento`, `desempenho_por_mapa`, `desempenho_por_mapa_ano`, `vetos`, `jogadores`, `jogador_por_mapa`, `jogador_por_lado`, `jogador_mensal`.
+**Gold**, tabelas agregadas: `kpis_gerais`, `partidas`, `desempenho_mensal`, `confronto_direto`, `desempenho_por_evento`, `desempenho_por_mapa`, `desempenho_por_mapa_ano`, `vetos`, `jogadores`, `jogador_por_mapa`, `jogador_por_lado`, `jogador_mensal`.
 
-Além das agregadas, a gold tem quatro tabelas no grão de mapa, `lineups`, `detalhe_mapas`, `detalhe_jogadores`, `detalhe_jogadores_lado` e `detalhe_vetos`, para o dashboard filtrar e recalcular no navegador.
+Além das agregadas, a gold tem a tabela `lineups` (uma linha por escalação) e quatro tabelas de detalhe (`detalhe_mapas`, `detalhe_jogadores`, `detalhe_jogadores_lado` e `detalhe_vetos`), que o dashboard filtra e recalcula no navegador.
 
 As transformações estão em SQL puro, em [`sql/silver`](sql/silver) e [`sql/gold`](sql/gold).
 
@@ -34,10 +34,10 @@ As transformações estão em SQL puro, em [`sql/silver`](sql/silver) e [`sql/go
 
 Site estático em [`docs/`](docs), servido pelo GitHub Pages:
 
-- `index.html`, visão geral: indicadores, a linha do tempo com todas as partidas, forma, mapas e elenco.
-- `analise.html`, análise detalhada em abas: resumo, mapas, jogadores, vetos, adversários, campeonatos e partidas.
+- `index.html`: visão geral, indicadores, a linha do tempo com todas as partidas, forma, mapas e elenco.
+- `analise.html`: análise detalhada em abas, resumo, mapas, jogadores, vetos, adversários, campeonatos e partidas.
 
-As duas páginas têm os mesmos filtros (período, lineup, mapas, jogador, adversário, ambiente e formato) e recalculam tudo no navegador conforme o recorte.
+As duas páginas têm os mesmos filtros (período, lineup, mapas, jogador, adversário, ambiente e formato) e recalculam tudo no navegador conforme o recorte. O código comum fica em `comum.js` e `comum.css`; cada página tem o seu script (`index.js`, `analise.js`). Uma política de segurança de conteúdo (CSP) só permite scripts do próprio site e a biblioteca de gráficos, conferida por hash.
 
 Os dados ficam em `docs/data/`: a cada execução a esteira copia para lá as tabelas gold que o site usa. Com `--publicar`, ela também faz o commit dessa pasta e o push; o GitHub Pages atualiza o site em seguida. Só há commit quando algum dado mudou.
 
@@ -98,8 +98,8 @@ O n8n precisa rodar **na mesma máquina** da esteira, instalado via Node.js (no 
 3. Importe o fluxo (menu do editor → *Import from File*) e ajuste o nó **Configuracao**: pasta do projeto, telefone com código do país e e-mails.
 
 4. Credenciais (ficam só no seu n8n, nunca neste repositório):
-   - **WhatsApp (CallMeBot)**, ative o serviço para o seu número seguindo as instruções em [callmebot.com](https://www.callmebot.com) (API de WhatsApp) e, no nó, crie uma credencial *Query Auth* com nome `apikey` e a chave recebida. É um serviço gratuito de terceiros, para uso pessoal.
-   - **E-mail**, credencial *SMTP*. No Gmail: host `smtp.gmail.com`, porta 465, SSL, usuário = seu e-mail e uma [senha de app](https://myaccount.google.com/apppasswords).
+   - **WhatsApp (CallMeBot)**: ative o serviço para o seu número seguindo as instruções em [callmebot.com](https://www.callmebot.com) (API de WhatsApp) e, no nó, crie uma credencial *Query Auth* com nome `apikey` e a chave recebida. É um serviço gratuito de terceiros, para uso pessoal.
+   - **E-mail**: credencial *SMTP*. No Gmail: host `smtp.gmail.com`, porta 465, SSL, usuário = seu e-mail e uma [senha de app](https://myaccount.google.com/apppasswords).
 
 5. Teste com *Execute workflow* e depois ative o fluxo.
 
@@ -148,3 +148,7 @@ Os testes também rodam no GitHub Actions a cada push.
 - Título é a colocação `1st`; faixas como `1-2nd` não contam como título.
 - LAN ou online só é informado pela HLTV em parte das partidas, quase todas de 2021 em diante; nas demais o campo fica nulo.
 - Fonte dos dados: HLTV.org. O conteúdo bruto (`data/`) não é versionado neste repositório; só as tabelas que o dashboard usa (`docs/data/`).
+
+## Licença
+
+O código está sob a [licença MIT](LICENSE). Os dados pertencem à HLTV.org e não são cobertos por ela.
