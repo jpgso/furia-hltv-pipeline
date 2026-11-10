@@ -58,7 +58,7 @@ O fluxo em [`n8n/workflow_furia_diario.json`](n8n/workflow_furia_diario.json) ro
 
 O n8n precisa rodar **na mesma máquina** da esteira, instalado via Node.js (no Docker ele não alcança o Python nem o Chrome).
 
-1. Instale o [Node.js LTS](https://nodejs.org) e depois o n8n:
+1. Instale o [Node.js 22](https://nodejs.org/dist/latest-v22.x/) (arquivo `-x64.msi`) e depois o n8n. Em versões mais novas do Node, como a 26, a instalação do n8n falha por falta de binários prontos de uma dependência:
 
    ```bash
    npm install -g n8n
@@ -67,7 +67,7 @@ O n8n precisa rodar **na mesma máquina** da esteira, instalado via Node.js (no 
 2. Inicie o n8n liberando o nó *Execute Command*, que vem bloqueado por padrão nas versões 2.x (PowerShell). Abra `http://localhost:5678` e crie a conta local:
 
    ```powershell
-   $env:NODES_EXCLUDE = "[]"; n8n start
+   $env:NODES_EXCLUDE = "[]"; n8n.cmd start
    ```
 
 3. Importe o fluxo (menu do editor → *Import from File*) e ajuste o nó **Configuracao**: pasta do projeto, telefone com código do país e e-mails.
@@ -81,11 +81,16 @@ O n8n precisa rodar **na mesma máquina** da esteira, instalado via Node.js (no 
 6. Para o n8n subir junto com o Windows (PowerShell, uma única vez):
 
    ```powershell
-   $acao = New-ScheduledTaskAction -Execute "powershell.exe" -Argument '-NoProfile -WindowStyle Hidden -Command "$env:NODES_EXCLUDE=''[]''; n8n start"'
-   Register-ScheduledTask -TaskName "n8n" -Action $acao -Trigger (New-ScheduledTaskTrigger -AtLogOn)
+   $acao = New-ScheduledTaskAction -Execute "powershell.exe" -Argument '-NoProfile -WindowStyle Hidden -Command "$env:NODES_EXCLUDE=''[]''; n8n.cmd start"'
+   $gatilho = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+   $config = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero)
+   Register-ScheduledTask -TaskName "n8n" -Action $acao -Trigger $gatilho -Settings $config
+   Start-ScheduledTask -TaskName "n8n"
    ```
 
-O que o fluxo executa é [`scripts/run_diario.ps1`](scripts/run_diario.ps1): abre o Chrome de depuração minimizado se preciso, roda `python main.py diario --espera-desafio 30 --json` e devolve uma linha de JSON com `status` (`ok`, `cloudflare`, `sem_chrome`, `erro`) e as partidas novas. Se o Cloudflare pedir verificação, a janela do Chrome fica aberta para você resolvê-la, o aviso chega uma vez (no máximo um por dia para o mesmo problema) e a execução seguinte continua de onde parou.
+   Assim o n8n roda escondido, sem depender de uma janela do PowerShell aberta.
+
+O que o fluxo executa é [`scripts/run_diario.ps1`](scripts/run_diario.ps1): abre o Chrome de depuração minimizado se preciso, roda a carga diária com espera curta pelo Cloudflare e grava em `data/ultima_execucao.json` uma linha de JSON com `status` (`ok`, `cloudflare`, `sem_chrome`, `erro`) e as partidas novas. O fluxo lê esse arquivo com `type`, porque no Windows o nó *Execute Command* não captura a saída de programas filhos. Se o Cloudflare pedir verificação, a janela do Chrome fica aberta para você resolvê-la, o aviso chega uma vez (no máximo um por dia para o mesmo problema) e a execução seguinte continua de onde parou.
 
 ## Estrutura
 

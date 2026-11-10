@@ -101,12 +101,18 @@ if __name__ == "__main__":
     parser.add_argument("--espera-desafio", type=int, default=None, metavar="SEGUNDOS",
                         help="espera máxima pela verificação do Cloudflare (execução automática)")
     parser.add_argument("--json", action="store_true", help="imprime o resumo da execução em JSON na saída padrão")
+    parser.add_argument("--json-arquivo", default=None, metavar="CAMINHO",
+                        help="grava o mesmo resumo em um arquivo (para quem não consegue ler a saída padrão)")
     args = parser.parse_args()
     if args.espera_desafio is not None:
         settings.CHALLENGE_TIMEOUT = args.espera_desafio
         settings.EVENTS_CHALLENGE_TIMEOUT = min(settings.EVENTS_CHALLENGE_TIMEOUT, args.espera_desafio)
     result = run(args.modo, args.limite)
+    # Só ASCII: o resumo é lido por outros programas (PowerShell, n8n) sem depender de codificação.
+    text = json.dumps(result, ensure_ascii=True)
+    if args.json_arquivo:
+        with open(args.json_arquivo, "w", encoding="ascii") as fh:
+            fh.write(text)
     if args.json:
-        # Só ASCII: a saída é lida por outros programas (PowerShell, n8n) sem depender de codificação.
-        print(json.dumps(result, ensure_ascii=True))
+        print(text)
     sys.exit(0 if result["status"] == "ok" else 1)

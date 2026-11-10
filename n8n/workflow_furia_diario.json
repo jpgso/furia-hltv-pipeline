@@ -39,7 +39,7 @@
     },
     {
       "parameters": {
-        "command": "=powershell -NoProfile -ExecutionPolicy Bypass -File \"{{ $json.pasta_projeto }}\\scripts\\run_diario.ps1\""
+        "command": "=powershell -NoProfile -ExecutionPolicy Bypass -File \"{{ $json.pasta_projeto }}\\scripts\\run_diario.ps1\" > nul 2>&1 & type \"{{ $json.pasta_projeto }}\\data\\ultima_execucao.json\""
       },
       "id": "a1f0c0de-0004-4000-8000-000000000004",
       "name": "Rodar esteira",

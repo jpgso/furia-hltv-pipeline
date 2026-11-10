@@ -6,6 +6,8 @@ venv/
 .ipynb_checkpoints/
 
 # Artefatos gerados pela esteira (recriados a cada execução)
+.env
+*.env
 logs/
 data/
 
