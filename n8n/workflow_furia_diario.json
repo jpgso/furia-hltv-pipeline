@@ -1,0 +1,112 @@
+{
+  "name": "FURIA HLTV - carga diaria",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [ { "field": "hours", "hoursInterval": 3 } ] }
+      },
+      "id": "a1f0c0de-0001-4000-8000-000000000001",
+      "name": "A cada 3 horas",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": { "events": ["init"] },
+      "id": "a1f0c0de-0002-4000-8000-000000000002",
+      "name": "Ao iniciar o n8n",
+      "type": "n8n-nodes-base.n8nTrigger",
+      "typeVersion": 1,
+      "position": [0, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "c0000001-0000-4000-8000-000000000001", "name": "pasta_projeto", "value": "C:\\caminho\\para\\furia_hltv_pipeline", "type": "string" },
+            { "id": "c0000001-0000-4000-8000-000000000002", "name": "whatsapp_telefone", "value": "+5500000000000", "type": "string" },
+            { "id": "c0000001-0000-4000-8000-000000000003", "name": "email_remetente", "value": "seu-email@exemplo.com", "type": "string" },
+            { "id": "c0000001-0000-4000-8000-000000000004", "name": "email_destino", "value": "seu-email@exemplo.com", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1f0c0de-0003-4000-8000-000000000003",
+      "name": "Configuracao",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [240, 100]
+    },
+    {
+      "parameters": {
+        "command": "=powershell -NoProfile -ExecutionPolicy Bypass -File \"{{ $json.pasta_projeto }}\\scripts\\run_diario.ps1\""
+      },
+      "id": "a1f0c0de-0004-4000-8000-000000000004",
+      "name": "Rodar esteira",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [480, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Le o resumo em JSON que o script devolve e decide se ha algo a avisar.\n// Sem novidade, devolve lista vazia: os nos de notificacao nao rodam.\nconst cfg = $('Configuracao').first().json;\nconst saida = String($input.first().json.stdout || '').trim();\nconst linha = saida.split(/\\r?\\n/).filter(l => l.trim().startsWith('{')).pop();\n\nlet r;\ntry {\n  r = JSON.parse(linha);\n} catch (e) {\n  r = { status: 'erro', mensagem: 'Saida inesperada do script: ' + saida.slice(0, 300), partidas_novas: [] };\n}\n\nconst memoria = $getWorkflowStaticData('global');\nconst agora = Date.now();\nconst UM_DIA = 24 * 60 * 60 * 1000;\nconst rotulo = { V: 'Vitoria', D: 'Derrota', E: 'Empate' };\nconst novas = r.partidas_novas || [];\n\nlet assunto = null;\nlet texto = null;\n\nif (novas.length) {\n  const linhas = novas.map(p =>\n    `${rotulo[p.resultado] || p.resultado}: FURIA ${p.placar_furia} x ${p.placar_adversario} ${p.adversario} (${p.data})\\n` +\n    `${p.evento || ''}\\n${p.mapas || ''}`);\n  const extra = r.baixadas > novas.length ? `\\n\\n(+${r.baixadas - novas.length} partida(s) mais antigas)` : '';\n  assunto = `FURIA: ${r.baixadas} partida(s) nova(s) no dashboard`;\n  texto = `${assunto}\\n\\n${linhas.join('\\n\\n')}${extra}`;\n}\n\nif (r.status !== 'ok') {\n  // O mesmo problema so e avisado de novo depois de 24 horas.\n  const repetido = memoria.ultimoErro === r.status && agora - (memoria.avisoErroEm || 0) < UM_DIA;\n  if (!repetido) {\n    const aviso = r.status === 'cloudflare'\n      ? 'A HLTV pediu a verificacao do Cloudflare. Resolva-a na janela do Chrome que ficou aberta; a proxima execucao continua de onde parou.'\n      : `A carga diaria falhou (${r.status}): ${r.mensagem}`;\n    assunto = assunto || 'FURIA: a carga diaria precisa de atencao';\n    texto = texto ? `${texto}\\n\\n${aviso}` : `${assunto}\\n\\n${aviso}`;\n    memoria.avisoErroEm = agora;\n  }\n  memoria.ultimoErro = r.status;\n} else {\n  memoria.ultimoErro = null;\n}\n\nif (!texto) return [];\nreturn [{ json: { ...cfg, status: r.status, assunto, texto } }];"
+      },
+      "id": "a1f0c0de-0005-4000-8000-000000000005",
+      "name": "Montar aviso",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 100]
+    },
+    {
+      "parameters": {
+        "url": "https://api.callmebot.com/whatsapp.php",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "phone", "value": "={{ $json.whatsapp_telefone }}" },
+            { "name": "text", "value": "={{ $json.texto }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1f0c0de-0006-4000-8000-000000000006",
+      "name": "WhatsApp (CallMeBot)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 0],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $json.email_remetente }}",
+        "toEmail": "={{ $json.email_destino }}",
+        "subject": "={{ $json.assunto }}",
+        "emailFormat": "text",
+        "text": "={{ $json.texto }}",
+        "options": {}
+      },
+      "id": "a1f0c0de-0007-4000-8000-000000000007",
+      "name": "E-mail",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [960, 200],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "A cada 3 horas": { "main": [ [ { "node": "Configuracao", "type": "main", "index": 0 } ] ] },
+    "Ao iniciar o n8n": { "main": [ [ { "node": "Configuracao", "type": "main", "index": 0 } ] ] },
+    "Configuracao": { "main": [ [ { "node": "Rodar esteira", "type": "main", "index": 0 } ] ] },
+    "Rodar esteira": { "main": [ [ { "node": "Montar aviso", "type": "main", "index": 0 } ] ] },
+    "Montar aviso": {
+      "main": [ [
+        { "node": "WhatsApp (CallMeBot)", "type": "main", "index": 0 },
+        { "node": "E-mail", "type": "main", "index": 0 }
+      ] ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "active": false
+}

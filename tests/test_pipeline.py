@@ -152,3 +152,26 @@ def test_rebuild_is_incremental_and_idempotent(tmp_path):
     con = warehouse.connect(db)
     assert con.execute("SELECT count(*) FROM staging.player_stats").fetchone()[0] == 18
     con.close()
+
+
+# ------------------------------------------------------ resumo para automação
+def test_failure_is_classified_for_automation():
+    from extract.browser import BrowserUnavailable, PageLoadError
+    from main import classify_failure
+
+    assert classify_failure(BrowserUnavailable("porta fechada")) == "sem_chrome"
+    assert classify_failure(PageLoadError("verificação do Cloudflare não resolvida: url")) == "cloudflare"
+    assert classify_failure(PageLoadError("conteúdo não apareceu: url")) == "erro"
+    assert classify_failure(ValueError("x")) == "erro"
+
+
+def test_new_matches_summary_comes_from_gold(tmp_path):
+    from main import new_matches
+
+    _, db, _, _ = _build(tmp_path)
+    assert new_matches(set(), db) == []
+    novas = new_matches({2367598, 999}, db)
+    assert [(n["partida_id"], n["data"], n["adversario"], n["resultado"], n["placar_furia"], n["placar_adversario"])
+            for n in novas] == [(2367598, "2023-10-31", "Nouns", "V", 2, 0)]
+    assert novas[0]["mapas"] == "Vertigo 13-5, Mirage 13-7"
+    json.dumps(novas)  # precisa ser serializável

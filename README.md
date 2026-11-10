@@ -52,9 +52,46 @@ As transformações estão em SQL puro, em [`sql/silver`](sql/silver) e [`sql/go
 
 Se a verificação do Cloudflare aparecer durante a execução, a esteira pausa e aguarda você resolvê-la na janela do Chrome.
 
+## Atualização automática com n8n (opcional)
+
+O fluxo em [`n8n/workflow_furia_diario.json`](n8n/workflow_furia_diario.json) roda a carga diária em segundo plano e avisa por WhatsApp e e-mail quando há partida nova ou quando algo precisa de atenção. Ele dispara ao iniciar o n8n e a cada 3 horas, então não depende de o computador estar ligado em um horário fixo.
+
+O n8n precisa rodar **na mesma máquina** da esteira, instalado via Node.js (no Docker ele não alcança o Python nem o Chrome).
+
+1. Instale o [Node.js LTS](https://nodejs.org) e depois o n8n:
+
+   ```bash
+   npm install -g n8n
+   ```
+
+2. Inicie o n8n liberando o nó *Execute Command*, que vem bloqueado por padrão nas versões 2.x (PowerShell). Abra `http://localhost:5678` e crie a conta local:
+
+   ```powershell
+   $env:NODES_EXCLUDE = "[]"; n8n start
+   ```
+
+3. Importe o fluxo (menu do editor → *Import from File*) e ajuste o nó **Configuracao**: pasta do projeto, telefone com código do país e e-mails.
+
+4. Credenciais (ficam só no seu n8n, nunca neste repositório):
+   - **WhatsApp (CallMeBot)**, ative o serviço para o seu número seguindo as instruções em [callmebot.com](https://www.callmebot.com) (API de WhatsApp) e, no nó, crie uma credencial *Query Auth* com nome `apikey` e a chave recebida. É um serviço gratuito de terceiros, para uso pessoal.
+   - **E-mail**, credencial *SMTP*. No Gmail: host `smtp.gmail.com`, porta 465, SSL, usuário = seu e-mail e uma [senha de app](https://myaccount.google.com/apppasswords).
+
+5. Teste com *Execute workflow* e depois ative o fluxo.
+
+6. Para o n8n subir junto com o Windows (PowerShell, uma única vez):
+
+   ```powershell
+   $acao = New-ScheduledTaskAction -Execute "powershell.exe" -Argument '-NoProfile -WindowStyle Hidden -Command "$env:NODES_EXCLUDE=''[]''; n8n start"'
+   Register-ScheduledTask -TaskName "n8n" -Action $acao -Trigger (New-ScheduledTaskTrigger -AtLogOn)
+   ```
+
+O que o fluxo executa é [`scripts/run_diario.ps1`](scripts/run_diario.ps1): abre o Chrome de depuração minimizado se preciso, roda `python main.py diario --espera-desafio 30 --json` e devolve uma linha de JSON com `status` (`ok`, `cloudflare`, `sem_chrome`, `erro`) e as partidas novas. Se o Cloudflare pedir verificação, a janela do Chrome fica aberta para você resolvê-la, o aviso chega uma vez (no máximo um por dia para o mesmo problema) e a execução seguinte continua de onde parou.
+
 ## Estrutura
 
 ```
+n8n/         fluxo de atualização automática (importável no n8n)
+scripts/     execução em segundo plano para automatizadores
 config/      caminhos, parâmetros e logging
 extract/     navegação (browser), camada bronze e extração incremental (crawler)
 transform/   leitura do HTML em registros (parsers)
