@@ -64,14 +64,14 @@ def test_player_stats_read_by_css_class_not_position():
     assert (row["player_id"], row["team_id"]) == (15631, 8297)
     assert (row["kills"], row["deaths"], row["ekills"], row["edeaths"]) == (17, 7, 17, 9)
     assert (row["adr"], row["eadr"], row["kast_pct"], row["ekast_pct"]) == (109.3, 105.5, 77.8, 71.7)
-    assert (row["swing_pct"], row["rating"], row["rating_versao"], row["plus_minus"]) == (6.52, 1.71, "3.0", None)
+    assert (row["swing_pct"], row["rating"], row["rating_versao"]) == (6.52, 1.71, "3.0")
     assert {s["lado"] for s in stats} == {"TOTAL", "CT", "TR"}
 
 
-def test_old_layout_has_plus_minus_and_no_eco_data():
+def test_old_layout_has_no_swing_and_no_eco_data():
     stats = parse_match_page(fixtures.match_old_layout(), 2333124)["player_stats"]
     row = next(s for s in stats if s["mapstats_id"] == 85615 and s["nick"] == "arT")
-    assert (row["kills"], row["deaths"], row["plus_minus"], row["swing_pct"]) == (25, 15, 10, None)
+    assert (row["kills"], row["deaths"], row["swing_pct"]) == (25, 15, None)
     assert (row["ekills"], row["eadr"], row["ekast_pct"]) == (None, None, None)
     assert (row["adr"], row["kast_pct"], row["rating"], row["rating_versao"]) == (95.2, 76.9, 1.45, "2.0")
 
@@ -134,13 +134,11 @@ def test_gold_tables_and_export(tmp_path):
     assert q("SELECT count(*) FROM gold.jogador_por_lado") == [(2,)]
     con.close()
 
-    exported = json.loads((export / "kpis_gerais.json").read_text(encoding="utf-8"))
-    assert exported[0]["partidas"] == 2
-    assert (export / "partidas.parquet").exists()
-    assert {p.stem for p in export.glob("*.json")} >= {
-        "partidas", "kpis_gerais", "desempenho_mensal", "confronto_direto", "desempenho_por_evento",
-        "desempenho_por_mapa", "desempenho_por_mapa_ano", "vetos",
-        "jogadores", "jogador_por_mapa", "jogador_por_lado", "jogador_mensal"}
+    # só as tabelas que o dashboard lê são exportadas
+    from config import settings
+    assert {p.name for p in export.iterdir()} == {f"{t}.json" for t in settings.DASHBOARD_TABLES}
+    exported = json.loads((export / "partidas.json").read_text(encoding="utf-8"))
+    assert [p["adversario"] for p in exported] == ["Nouns", "Lazarus"]
 
 
 def test_rebuild_is_incremental_and_idempotent(tmp_path):
@@ -156,11 +154,11 @@ def test_rebuild_is_incremental_and_idempotent(tmp_path):
 
 # ------------------------------------------------------ resumo para automação
 def test_failure_is_classified_for_automation():
-    from extract.browser import BrowserUnavailable, PageLoadError
+    from extract.browser import BrowserUnavailable, ChallengeError, PageLoadError
     from main import classify_failure
 
     assert classify_failure(BrowserUnavailable("porta fechada")) == "sem_chrome"
-    assert classify_failure(PageLoadError("verificação do Cloudflare não resolvida: url")) == "cloudflare"
+    assert classify_failure(ChallengeError("verificação do Cloudflare não resolvida: url")) == "cloudflare"
     assert classify_failure(PageLoadError("conteúdo não apareceu: url")) == "erro"
     assert classify_failure(ValueError("x")) == "erro"
 
@@ -188,12 +186,14 @@ def test_detail_tables_feed_dashboard_filters(tmp_path):
     assert q("SELECT count(*), count(lineup_id) FROM gold.detalhe_mapas") == [(5, 5)]
     assert q("SELECT mapa, resultado, rounds_furia, rounds_adversario, lineup_id FROM gold.detalhe_mapas "
              "WHERE mapstats_id = 165657") == [("Vertigo", "V", 13, 5, 2)]
-    # mesmas linhas da silver, só da FURIA
+    # mesmas linhas da silver, só da FURIA: o mapa inteiro em uma tabela, os lados em outra
     assert q("SELECT count(*) FROM gold.detalhe_jogadores") == q(
-        "SELECT count(*) FROM silver.fato_jogador_mapa WHERE eh_furia")
+        "SELECT count(*) FROM silver.fato_jogador_mapa WHERE eh_furia AND lado = 'TOTAL'")
+    assert q("SELECT count(*) FROM gold.detalhe_jogadores_lado") == q(
+        "SELECT count(*) FROM silver.fato_jogador_mapa WHERE eh_furia AND lado <> 'TOTAL'")
     # reagregar o detalhe reproduz a tabela já agregada
     assert q("SELECT jogador, round(sum(rating * rounds) / sum(rounds), 2) FROM gold.detalhe_jogadores "
-             "WHERE lado = 'TOTAL' GROUP BY jogador ORDER BY jogador") == q(
+             "GROUP BY jogador ORDER BY jogador") == q(
         "SELECT jogador, rating FROM gold.jogadores ORDER BY jogador")
     assert q("SELECT count(*) FROM gold.detalhe_vetos") == q(
         "SELECT count(*) FROM silver.fato_veto WHERE autor IS NOT NULL")
@@ -240,3 +240,55 @@ def test_dashboard_push_commits_only_the_data_folder(tmp_path):
     assert git(remote, "show", "main:docs/data/a.json") == "[1, 2]"
     assert "outro.txt" not in git(remote, "ls-tree", "-r", "--name-only", "main")
     assert publish.push_dashboard(repo, data)["status"] == "sem_mudanca"
+
+
+    # commit local de outra coisa ainda não enviado: a publicação se recusa a levá-lo junto
+    (repo / "outro.txt").write_text("trabalho em andamento"); git(repo, "add", "outro.txt"); git(repo, "commit", "-q", "-m", "wip")
+    (data / "a.json").write_text("[1, 2, 3]")
+    blocked = publish.push_dashboard(repo, data)
+    assert blocked["status"] == "erro" and "outro.txt" in blocked["mensagem"]
+    assert git(remote, "show", "main:docs/data/a.json") == "[1, 2]"
+    git(repo, "checkout", "-q", "-b", "experimento")
+    assert "branch atual" in publish.push_dashboard(repo, data)["mensagem"]
+
+
+# ------------------------------------------------------- consistência do banco
+def test_bronze_is_the_source_of_truth(tmp_path):
+    _, db, export, root = _build(tmp_path)
+    (root / bronze.MATCHES / "2333124.html.gz").unlink()
+    assert warehouse.build(bronze_root=root, db_path=db, export_dir=export)["partidas_na_silver"] == 1
+    con = warehouse.connect(db)
+    assert con.execute("SELECT count(DISTINCT match_id) FROM staging.player_stats").fetchone()[0] == 1
+    con.close()
+
+
+def test_results_listing_accumulates_across_runs(tmp_path):
+    import re
+
+    _, db, export, root = _build(tmp_path)
+    # a página 0 mais nova já não traz a primeira partida (ela teria ido para uma página não rebaixada)
+    page = re.sub(r'<div class="result-con".*?</div>\s*(?=<div class="result-con")', "", fixtures.results_page(), count=1, flags=re.S)
+    assert [m["match_id"] for m in parse_results_page(page)["matches"]] == [2333124]
+    bronze.save(bronze.RESULTS, bronze.results_name(0), page, root)
+    warehouse.build(bronze_root=root, db_path=db, export_dir=export)
+    con = warehouse.connect(db)
+    assert con.execute("SELECT partida_id, estrelas FROM silver.fato_partida ORDER BY 1").fetchall() == [(2333124, 0), (2367598, 1)]
+    con.close()
+
+
+def test_staging_schema_change_forces_reread(tmp_path):
+    _, db, export, root = _build(tmp_path)
+    con = warehouse.connect(db)
+    con.execute("ALTER TABLE staging.match_vetos ADD COLUMN coluna_antiga VARCHAR")
+    con.close()
+    again = warehouse.build(bronze_root=root, db_path=db, export_dir=export)
+    assert again["partidas_interpretadas"] == 2 and again["partidas_na_silver"] == 2
+
+
+def test_brasilia_time_follows_daylight_saving(tmp_path):
+    con = warehouse.connect(tmp_path / "t.duckdb")
+    warehouse.run_sql_layer(con, "silver")
+    # 2018-12-15 01:30 UTC: 23:30 do dia 14 em horário de verão (UTC-2); 2023-12-15 01:30 UTC: 22:30 (UTC-3)
+    rows = con.execute("SELECT CAST(data_hora_brt(1544837400000) AS VARCHAR), CAST(data_hora_brt(1702603800000) AS VARCHAR)").fetchone()
+    con.close()
+    assert rows == ("2018-12-14 23:30:00", "2023-12-14 22:30:00")

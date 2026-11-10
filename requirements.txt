@@ -1,6 +1,6 @@
-DrissionPage>=4.1.1.4
-beautifulsoup4>=4.12.3
-lxml>=5.0.0
-duckdb>=1.1.0
-pyarrow>=14.0.0
-pytest>=8.0.0
+DrissionPage==4.1.1.4
+beautifulsoup4==4.12.3
+lxml==6.1.1
+duckdb==2.0.0
+pyarrow==25.0.0
+pytest==9.2.0

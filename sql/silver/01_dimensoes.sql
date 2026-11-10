@@ -1,8 +1,9 @@
 -- Camada SILVER: dimensões do modelo estrela.
--- Horário: a HLTV informa o instante em UTC; aqui vira horário de Brasília (UTC-3).
+-- Horário: a HLTV informa o instante em UTC; aqui vira horário de Brasília,
+-- respeitando o horário de verão que existiu até 2019.
 
-CREATE OR REPLACE MACRO data_hora_brt(ms) AS epoch_ms(ms) - INTERVAL 3 HOUR;
-CREATE OR REPLACE MACRO data_brt(ms) AS CAST(epoch_ms(ms) - INTERVAL 3 HOUR AS DATE);
+CREATE OR REPLACE MACRO data_hora_brt(ms) AS timezone('America/Sao_Paulo', to_timestamp(ms / 1000.0));
+CREATE OR REPLACE MACRO data_brt(ms) AS CAST(timezone('America/Sao_Paulo', to_timestamp(ms / 1000.0)) AS DATE);
 
 -- Times: o nome mais recente prevalece (times mudam de nome).
 CREATE OR REPLACE TABLE silver.dim_time AS

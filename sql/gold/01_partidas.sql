@@ -47,7 +47,7 @@ SELECT
 FROM blocos
 ORDER BY data_hora DESC, partida_id DESC;
 
--- Indicadores gerais (uma linha).
+-- Indicadores gerais (uma linha). Mapas e rounds não contam mapas sem disputa (W.O.).
 CREATE OR REPLACE TABLE gold.kpis_gerais AS
 WITH p AS (
     SELECT
@@ -58,12 +58,17 @@ WITH p AS (
         min(data)                                            AS primeira_partida,
         max(data)                                            AS ultima_partida,
         arg_max(sequencia, data_hora)                        AS sequencia_atual,
-        max(sequencia)                                       AS maior_sequencia_vitorias,
-        sum(mapas_vencidos)                                  AS mapas_vencidos,
-        sum(mapas_perdidos)                                  AS mapas_perdidos,
-        sum(rounds_vencidos)                                 AS rounds_vencidos,
-        sum(rounds_perdidos)                                 AS rounds_perdidos
+        max(sequencia)                                       AS maior_sequencia_vitorias
     FROM gold.partidas
+),
+m AS (
+    SELECT
+        count(*) FILTER (WHERE resultado = 'V')              AS mapas_vencidos,
+        count(*) FILTER (WHERE resultado = 'D')              AS mapas_perdidos,
+        sum(rounds_furia)                                    AS rounds_vencidos,
+        sum(rounds_adversario)                               AS rounds_perdidos
+    FROM silver.fato_mapa
+    WHERE NOT sem_disputa
 ),
 e AS (
     SELECT
@@ -75,13 +80,13 @@ e AS (
 SELECT
     p.partidas, p.vitorias, p.derrotas, p.empates,
     round(100.0 * p.vitorias / nullif(p.partidas, 0), 1)                                  AS aproveitamento,
-    p.mapas_vencidos, p.mapas_perdidos,
-    round(100.0 * p.mapas_vencidos / nullif(p.mapas_vencidos + p.mapas_perdidos, 0), 1)   AS aproveitamento_mapas,
-    p.rounds_vencidos, p.rounds_perdidos,
+    m.mapas_vencidos, m.mapas_perdidos,
+    round(100.0 * m.mapas_vencidos / nullif(m.mapas_vencidos + m.mapas_perdidos, 0), 1)   AS aproveitamento_mapas,
+    m.rounds_vencidos, m.rounds_perdidos,
     p.sequencia_atual, p.maior_sequencia_vitorias,
     e.campeonatos, e.titulos, e.top_4,
     p.primeira_partida, p.ultima_partida
-FROM p CROSS JOIN e;
+FROM p CROSS JOIN m CROSS JOIN e;
 
 -- Evolução mês a mês.
 CREATE OR REPLACE TABLE gold.desempenho_mensal AS

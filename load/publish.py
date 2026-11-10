@@ -45,27 +45,41 @@ def _git(repo: Path, *args: str) -> subprocess.CompletedProcess:
                           encoding="utf-8", errors="replace", timeout=120)
 
 
+def _error(message: str) -> dict:
+    return {"status": "erro", "mensagem": message[:300]}
+
+
 def push_dashboard(repo_dir: Path | None = None, data_dir: Path | None = None) -> dict:
-    """Faz commit só da pasta de dados do dashboard e envia. Nunca lança exceção."""
+    """Faz commit só da pasta de dados do dashboard e envia. Nunca lança exceção.
+
+    Só publica a partir da branch principal e só quando os commits locais ainda não
+    enviados mexem apenas nos dados: trabalho em andamento nunca é enviado por tabela.
+    """
     repo = Path(repo_dir or settings.BASE_DIR)
     data = Path(data_dir or settings.DASHBOARD_DATA_DIR)
     rel = data.relative_to(repo).as_posix()
     try:
+        branch = _git(repo, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+        if branch != settings.PUBLISH_BRANCH:
+            return _error(f"a branch atual é '{branch}'; a publicação só sai de '{settings.PUBLISH_BRANCH}'")
+        log = _git(repo, "log", "@{u}..HEAD", "--name-only", "--format=").stdout.splitlines()
+        pending = [p.strip() for p in log if p.strip()]  # arquivos dos commits ainda não enviados
+        foreign = sorted({p for p in pending if not p.startswith(rel + "/")})
+        if foreign:
+            return _error(f"há commits locais ainda não enviados fora de {rel} ({foreign[0]}...); envie-os antes")
+
         _git(repo, "add", "--", rel)
-        if _git(repo, "diff", "--cached", "--quiet", "--", rel).returncode == 0:
-            # Nada novo para registrar; ainda assim envia commits de dados que ficaram para trás.
-            ahead = _git(repo, "rev-list", "--count", "@{u}..HEAD")
-            if ahead.returncode != 0 or ahead.stdout.strip() in ("", "0"):
-                return {"status": "sem_mudanca", "mensagem": ""}
-        else:
+        if _git(repo, "diff", "--cached", "--quiet", "--", rel).returncode != 0:
             stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
             commit = _git(repo, "commit", "-m", f"Atualiza dados do dashboard ({stamp})", "--", rel)
             if commit.returncode != 0:
-                return {"status": "erro", "mensagem": f"commit falhou: {(commit.stderr or commit.stdout).strip()[:300]}"}
-        push = _git(repo, "push")
+                return _error(f"commit falhou: {(commit.stderr or commit.stdout).strip()}")
+        elif not pending:
+            return {"status": "sem_mudanca", "mensagem": ""}
+        push = _git(repo, "push", "origin", f"HEAD:{settings.PUBLISH_BRANCH}")
         if push.returncode != 0:
-            return {"status": "erro", "mensagem": f"push falhou: {(push.stderr or push.stdout).strip()[:300]}"}
+            return _error(f"push falhou: {(push.stderr or push.stdout).strip()}")
         logger.info("Dashboard publicado no GitHub.")
         return {"status": "publicado", "mensagem": ""}
     except Exception as exc:  # git ausente, tempo esgotado etc.
-        return {"status": "erro", "mensagem": str(exc)[:300]}
+        return _error(str(exc))

@@ -10,7 +10,9 @@ SQL_DIR = BASE_DIR / "sql"
 DASHBOARD_DIR = BASE_DIR / "docs"          # site estático publicado pelo GitHub Pages
 DASHBOARD_DATA_DIR = DASHBOARD_DIR / "data"
 # Tabelas gold que o dashboard lê no navegador
-DASHBOARD_TABLES = ("partidas", "detalhe_mapas", "detalhe_jogadores", "detalhe_vetos", "lineups", "desempenho_por_evento")
+DASHBOARD_TABLES = ("partidas", "detalhe_mapas", "detalhe_jogadores", "detalhe_jogadores_lado",
+                    "detalhe_vetos", "lineups", "desempenho_por_evento")
+PUBLISH_BRANCH = "main"                   # a publicação automática só envia a partir desta branch
 
 # ---------------------------------------------------------------------- time
 TEAM_ID = 8297
@@ -32,4 +34,4 @@ RECENT_MATCH_DAYS = 3      # partida recente sem estatísticas é tentada de nov
 
 # Incrementar sempre que transform/parsers.py mudar o que extrai:
 # na execução seguinte todo o bronze é reinterpretado, sem nova raspagem.
-PARSER_VERSION = 1
+PARSER_VERSION = 2

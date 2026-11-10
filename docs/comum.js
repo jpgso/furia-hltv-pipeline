@@ -5,23 +5,33 @@ const $ = id => document.getElementById(id);
 const fmt = (n, d) => { d = typeof d === 'number' ? d : 0; return n == null || isNaN(n) ? '–' : Number(n).toLocaleString('pt-BR', {minimumFractionDigits: d, maximumFractionDigits: d}); };
 const pct = (a, b) => b ? 100 * a / b : null;
 const dataBR = s => s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4);
+// Os textos vêm de páginas de terceiros: sempre escapados antes de virar HTML.
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 
 const B = {};                     // base carregada
 const F = {mapas: new Set()};     // mapas marcados (os demais filtros ficam nos próprios campos)
+let lados;                        // estatísticas por lado (CT/TR), carregadas sob demanda
+
+function jogDoMapa(id) { let o = B.jog.get(id); if (!o) B.jog.set(id, o = {TOTAL: [], CT: [], TR: []}); return o; }
 
 async function carregaBase() {
   const [partidas, mapas, jog, vetos, lineups, eventos] = await Promise.all(
-    ['partidas', 'detalhe_mapas', 'detalhe_jogadores', 'detalhe_vetos', 'lineups', 'desempenho_por_evento'].map(get));
+    ['partidas', 'detalhe_mapas', 'detalhe_jogadores', 'detalhe_vetos', 'lineups', 'desempenho_por_evento'].map(get));  // jog: só o mapa inteiro
   B.partida = new Map(partidas.map(p => [p.partida_id, p]));
   B.partidas = partidas;                                   // da mais recente para a mais antiga
   B.jog = new Map();
-  jog.forEach(j => { let o = B.jog.get(j.mapstats_id); if (!o) B.jog.set(j.mapstats_id, o = {TOTAL: [], CT: [], TR: []}); o[j.lado].push(j); });
-  B.mapas = mapas.map(m => ({...m, p: B.partida.get(m.partida_id), jg: B.jog.get(m.mapstats_id) || {TOTAL: [], CT: [], TR: []}}));  // ordem cronológica
+  jog.forEach(j => jogDoMapa(j.mapstats_id).TOTAL.push(j));
+  B.mapas = mapas.map(m => ({...m, p: B.partida.get(m.partida_id), jg: jogDoMapa(m.mapstats_id)}));  // ordem cronológica
   B.comMapa = new Set(mapas.map(m => m.partida_id));
   B.vetos = vetos; B.lineups = lineups; B.linhasJog = jog;
   B.colocacao = new Map(eventos.map(e => [e.evento, e]));
   B.min = partidas[partidas.length - 1].data; B.max = partidas[0].data;
   B.meta = await get('meta').catch(() => ({}));       // quando os dados foram publicados
+}
+
+// CT e TR dobram o volume de dados; só são baixados quando alguém pede a visão por lado.
+function carregaLados() {
+  return lados || (lados = get('detalhe_jogadores_lado').then(ls => ls.forEach(j => jogDoMapa(j.mapstats_id)[j.lado].push(j))));
 }
 
 function htmlFiltros() {
@@ -46,12 +56,12 @@ function montaFiltros(aoMudar) {
   $('f-pre').innerHTML = '<option value="">Todo o período</option><option value="m3">Últimos 3 meses</option><option value="m12">Últimos 12 meses</option>' + anos.map(a => `<option value="${a}">${a}</option>`).join('') + '<option value="x">Personalizado</option>';
   $('f-de').min = $('f-ate').min = B.min; $('f-de').max = $('f-ate').max = B.max;
   $('f-lineup').innerHTML = '<option value="">Todas</option>' + B.lineups.slice().sort((a, b) => b.ultima_partida.localeCompare(a.ultima_partida)).map(l =>
-    `<option value="${l.lineup_id}">${l.jogadores} (${l.primeira_partida.slice(0, 4)}${l.ultima_partida.slice(0, 4) !== l.primeira_partida.slice(0, 4) ? '–' + l.ultima_partida.slice(2, 4) : ''} · ${l.mapas} mapas)</option>`).join('');
-  const cont = {}; B.linhasJog.forEach(j => { if (j.lado === 'TOTAL') cont[j.jogador] = (cont[j.jogador] || 0) + 1; });
-  $('f-jog').innerHTML = '<option value="">Todos</option>' + Object.entries(cont).sort((a, b) => b[1] - a[1]).map(([n, c]) => `<option value="${n}">${n} (${c})</option>`).join('');
-  $('l-adv').innerHTML = [...new Set(B.partidas.map(p => p.adversario))].sort().map(a => `<option value="${a}">`).join('');
+    `<option value="${l.lineup_id}">${esc(l.jogadores)} (${l.primeira_partida.slice(0, 4)}${l.ultima_partida.slice(0, 4) !== l.primeira_partida.slice(0, 4) ? '–' + l.ultima_partida.slice(2, 4) : ''} · ${l.mapas} mapas)</option>`).join('');
+  const cont = {}; B.linhasJog.forEach(j => { cont[j.jogador] = (cont[j.jogador] || 0) + 1; });
+  $('f-jog').innerHTML = '<option value="">Todos</option>' + Object.entries(cont).sort((a, b) => b[1] - a[1]).map(([n, c]) => `<option value="${esc(n)}">${esc(n)} (${c})</option>`).join('');
+  $('l-adv').innerHTML = [...new Set(B.partidas.map(p => p.adversario))].sort().map(a => `<option value="${esc(a)}">`).join('');
   const cm = {}; B.mapas.forEach(m => cm[m.mapa] = (cm[m.mapa] || 0) + 1);
-  $('f-mapas').insertAdjacentHTML('beforeend', Object.entries(cm).sort((a, b) => b[1] - a[1]).map(([n]) => `<span class="chip" data-m="${n}">${n}</span>`).join(''));
+  $('f-mapas').insertAdjacentHTML('beforeend', Object.entries(cm).sort((a, b) => b[1] - a[1]).map(([n]) => `<span class="chip" data-m="${esc(n)}">${esc(n)}</span>`).join(''));
   $('f-mapas').onclick = e => { const m = e.target.dataset.m; if (!m) return; F.mapas.has(m) ? F.mapas.delete(m) : F.mapas.add(m); e.target.classList.toggle('on'); aoMudar(); };
   $('f-pre').onchange = () => {
     const v = $('f-pre').value;
@@ -62,7 +72,8 @@ function montaFiltros(aoMudar) {
   };
   ['f-de', 'f-ate'].forEach(i => $(i).onchange = () => { $('f-pre').value = 'x'; aoMudar(); });
   ['f-lineup', 'f-jog', 'f-amb', 'f-fmt'].forEach(i => $(i).onchange = aoMudar);
-  $('f-adv').oninput = aoMudar;
+  let espera;  // não recalcula a cada tecla
+  $('f-adv').oninput = () => { clearTimeout(espera); espera = setTimeout(aoMudar, 200); };
   $('limpar').onclick = () => {
     ['f-pre', 'f-de', 'f-ate', 'f-lineup', 'f-jog', 'f-adv', 'f-amb', 'f-fmt'].forEach(i => $(i).value = '');
     F.mapas.clear(); document.querySelectorAll('.chip.on').forEach(c => c.classList.remove('on')); aoMudar();

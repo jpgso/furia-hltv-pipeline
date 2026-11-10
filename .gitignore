@@ -17,4 +17,5 @@ logs/
 Thumbs.db
 desktop.ini
 
+# Ferramentas locais
 .pytest_cache/

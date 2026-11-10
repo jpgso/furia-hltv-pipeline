@@ -6,7 +6,7 @@ Coleta o histórico de partidas de CS da FURIA na [HLTV](https://www.hltv.org) e
 |---|---|---|
 | **Bronze** | HTML bruto de cada página, compactado, baixado uma única vez | `data/bronze/**/*.html.gz` |
 | **Silver** | Modelo estrela (fatos e dimensões), na ótica da FURIA | `data/furia.duckdb`, schema `silver` |
-| **Gold** | Tabelas agregadas para o dashboard | schema `gold` + `data/gold_export/*.json` e `.parquet` |
+| **Gold** | Tabelas agregadas e tabelas no grão de mapa para o dashboard | schema `gold`; as que o site usa vão para `docs/data/*.json` |
 
 Como a bronze guarda o HTML original, corrigir ou ampliar o que é lido não exige raspar de novo: basta `python main.py reconstruir`.
 
@@ -24,7 +24,7 @@ Como a bronze guarda o HTML original, corrigir ou ampliar o que é lido não exi
 
 **Gold**, `kpis_gerais`, `partidas`, `desempenho_mensal`, `confronto_direto`, `desempenho_por_evento`, `desempenho_por_mapa`, `desempenho_por_mapa_ano`, `vetos`, `jogadores`, `jogador_por_mapa`, `jogador_por_lado`, `jogador_mensal`.
 
-Além das agregadas, a gold tem quatro tabelas no grão de mapa, `lineups`, `detalhe_mapas`, `detalhe_jogadores` e `detalhe_vetos`, para o dashboard filtrar e recalcular no navegador.
+Além das agregadas, a gold tem quatro tabelas no grão de mapa, `lineups`, `detalhe_mapas`, `detalhe_jogadores`, `detalhe_jogadores_lado` e `detalhe_vetos`, para o dashboard filtrar e recalcular no navegador.
 
 As transformações estão em SQL puro, em [`sql/silver`](sql/silver) e [`sql/gold`](sql/gold).
 
@@ -106,14 +106,14 @@ O n8n precisa rodar **na mesma máquina** da esteira, instalado via Node.js (no 
 6. Para o n8n subir junto com o Windows (PowerShell, uma única vez):
 
    ```powershell
-   $acao = New-ScheduledTaskAction -Execute "powershell.exe" -Argument '-NoProfile -WindowStyle Hidden -Command "$env:NODES_EXCLUDE=''[]''; n8n.cmd start"'
+   $acao = New-ScheduledTaskAction -Execute "powershell.exe" -Argument '-NoProfile -WindowStyle Hidden -Command "$env:NODES_EXCLUDE=''[]''; $env:N8N_LISTEN_ADDRESS=''127.0.0.1''; n8n.cmd start"'
    $gatilho = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
    $config = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero)
    Register-ScheduledTask -TaskName "n8n" -Action $acao -Trigger $gatilho -Settings $config
    Start-ScheduledTask -TaskName "n8n"
    ```
 
-   Assim o n8n roda escondido, sem depender de uma janela do PowerShell aberta.
+   Assim o n8n roda escondido, sem depender de uma janela do PowerShell aberta. `N8N_LISTEN_ADDRESS` restringe o acesso ao próprio computador, o que importa porque o nó *Execute Command* está liberado.
 
 O que o fluxo executa é [`scripts/run_diario.ps1`](scripts/run_diario.ps1): abre o Chrome de depuração minimizado se preciso, roda a carga diária com espera curta pelo Cloudflare, publica os dados do dashboard quando há novidade e grava em `data/ultima_execucao.json` uma linha de JSON com `status` (`ok`, `cloudflare`, `sem_chrome`, `erro`) e as partidas novas. O fluxo lê esse arquivo com `type`, porque no Windows o nó *Execute Command* não captura a saída de programas filhos. Se o Cloudflare pedir verificação, a janela do Chrome fica aberta para você resolvê-la, o aviso chega uma vez (no máximo um por dia para o mesmo problema) e a execução seguinte continua de onde parou.
 
@@ -137,9 +137,11 @@ tests/       testes dos parsers e da construção das camadas
 python -m pytest tests -q
 ```
 
+Os testes também rodam no GitHub Actions a cada push.
+
 ## Observações sobre os dados
 
-- Datas e horas estão no horário de Brasília (UTC-3).
+- Datas e horas estão no horário de Brasília, incluindo o horário de verão que existiu até 2019.
 - Estatísticas "eco-adjusted" (eK-eD, eADR, eKAST) e Swing só existem nas partidas mais recentes; nas antigas ficam nulas.
 - O rating mistura versões da HLTV (2.0 nas partidas antigas, 3.0 nas novas); a coluna `rating_versao` identifica cada linha.
 - O mapa `Default` (vantagem de mapa ou W.O.) conta no placar da série, mas fica fora das estatísticas por mapa (`sem_disputa`).

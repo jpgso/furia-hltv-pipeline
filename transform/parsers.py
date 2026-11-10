@@ -1,14 +1,15 @@
 """Leitura do HTML da HLTV em registros estruturados.
 
-Funções puras (HTML entra, dicionários saem), sem rede, sem banco e sem log,
+Funções puras (HTML entra, dicionários saem), sem rede e sem banco,
 para poderem ser testadas e executadas em paralelo. As células são localizadas
 pela classe CSS, nunca pela posição: a HLTV mantém colunas ocultas (eK-eD,
-eADR, eKAST) e mudou o layout ao longo dos anos (+/- virou Swing).
+eADR, eKAST) e mudou o layout ao longo dos anos.
 """
-import gzip
 import re
 
 from bs4 import BeautifulSoup
+
+from extract import bronze
 
 _MATCH_HREF = re.compile(r"/matches/(\d+)/([^/?#\"]+)")
 _VETO_ACTION = re.compile(r"^(\d+)\.\s+(.+?)\s+(removed|picked)\s+(.+)$", re.I)
@@ -132,7 +133,6 @@ def _parse_format_and_vetos(soup, match_id: int, teams: list[dict]):
                     vetos.append({
                         "match_id": match_id,
                         "ordem": int(action.group(1)),
-                        "time_nome": action.group(2).strip(),
                         "team_id": _team_id_by_name(action.group(2), teams),
                         "acao": action.group(3).lower(),
                         "mapa": action.group(4).strip(),
@@ -141,7 +141,6 @@ def _parse_format_and_vetos(soup, match_id: int, teams: list[dict]):
                     vetos.append({
                         "match_id": match_id,
                         "ordem": int(left.group(1)),
-                        "time_nome": None,
                         "team_id": None,
                         "acao": "left over",
                         "mapa": left.group(2).strip(),
@@ -287,7 +286,6 @@ def _parse_player_stats(soup, match_id: int, teams: list[dict]) -> list[dict]:
                     "deaths": deaths,
                     "ekills": ekills,
                     "edeaths": edeaths,
-                    "plus_minus": _int(_cell(tr, "plus-minus")),
                     "swing_pct": _float(_cell(tr, "roundSwing")),
                     "adr": _float(_cell(tr, "adr", "traditional-data")),
                     "eadr": _float(_cell(tr, "adr", "eco-adjusted-data")) if has_eco else None,
@@ -303,19 +301,17 @@ def parse_match_page(html: str, match_id: int) -> dict:
     soup = _soup(html)
     teams = _parse_teams(soup)
     event_link = soup.select_one(".timeAndEvent .event a")
-    event_id, event_slug = _href_id(event_link, "events")
+    event_id, _ = _href_id(event_link, "events")
     time_el = soup.select_one(".timeAndEvent .time[data-unix]") or soup.select_one(".timeAndEvent [data-unix]")
     canonical = soup.select_one("link[rel='canonical']")
     url = _MATCH_HREF.search(canonical.get("href", "")) if canonical else None
     vetos, fmt = _parse_format_and_vetos(soup, match_id, teams)
-    status = _text(soup.select_one(".timeAndEvent .countdown"))
 
     match = {
         "match_id": match_id,
         "match_url": f"/matches/{match_id}/{url.group(2)}" if url else f"/matches/{match_id}/_",
         "unix_ms": _int(time_el.get("data-unix")) if time_el else None,
         "event_id": event_id,
-        "event_slug": event_slug,
         "event_nome": _text(event_link),
         "team1_id": teams[0]["id"],
         "team1_nome": teams[0]["nome"],
@@ -325,7 +321,6 @@ def parse_match_page(html: str, match_id: int) -> dict:
         "team2_nome": teams[1]["nome"],
         "team2_score": teams[1]["score"],
         "team2_resultado": teams[1]["resultado"],
-        "status": status,
         "encerrada": teams[0]["resultado"] is not None and teams[1]["resultado"] is not None,
         **fmt,
     }
@@ -340,8 +335,7 @@ def parse_match_page(html: str, match_id: int) -> dict:
 def parse_match_file(path) -> dict:
     """Ponto de entrada para processamento paralelo: lê o .html.gz e interpreta."""
     match_id = int(str(path).replace("\\", "/").rsplit("/", 1)[-1].split(".")[0])
-    with gzip.open(path, "rt", encoding="utf-8") as fh:
-        return parse_match_page(fh.read(), match_id)
+    return parse_match_page(bronze.load(path), match_id)
 
 
 # ----------------------------------------------------------- página de eventos

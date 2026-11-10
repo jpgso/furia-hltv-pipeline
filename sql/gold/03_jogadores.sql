@@ -4,8 +4,8 @@
 
 CREATE OR REPLACE VIEW gold.base_jogador_mapa AS
 SELECT
-    fj.partida_id, fj.mapa_id, fj.jogador_id, fj.lado,
-    fp.data,
+    fj.partida_id, fj.mapstats_id, fj.mapa_id, fj.jogador_id, fj.lado,
+    fp.data, fp.data_hora,
     fm.resultado,
     CASE fj.lado
         WHEN 'CT' THEN fm.rounds_ct_furia + fm.rounds_tr_adversario
@@ -16,7 +16,7 @@ SELECT
 FROM silver.fato_jogador_mapa fj
 JOIN silver.fato_mapa fm USING (partida_id, mapstats_id)
 JOIN silver.fato_partida fp USING (partida_id)
-WHERE fj.eh_furia;
+WHERE fj.eh_furia AND NOT fm.sem_disputa;
 
 CREATE OR REPLACE MACRO media_ponderada(valor, peso) AS
     round(sum(valor * peso) FILTER (WHERE valor IS NOT NULL AND peso > 0)

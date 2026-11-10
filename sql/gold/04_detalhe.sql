@@ -55,29 +55,30 @@ LEFT JOIN gold.lineups g ON g.jogadores = l.jogadores
 WHERE NOT fm.sem_disputa
 ORDER BY fp.data_hora, fm.partida_id, fm.ordem;
 
--- Uma linha por jogador da FURIA x mapa x lado (TOTAL, CT, TR).
+-- Uma linha por jogador da FURIA x mapa, com o desempenho no mapa inteiro.
 -- `rounds` é o peso para as médias de ADR, KAST e rating.
 CREATE OR REPLACE TABLE gold.detalhe_jogadores AS
 SELECT
-    fj.mapstats_id,
+    b.mapstats_id,
     j.nick                                                AS jogador,
-    fj.lado,
-    CASE fj.lado
-        WHEN 'CT' THEN fm.rounds_ct_furia + fm.rounds_tr_adversario
-        WHEN 'TR' THEN fm.rounds_tr_furia + fm.rounds_ct_adversario
-        ELSE fm.rounds_furia + fm.rounds_adversario
-    END                                                   AS rounds,
-    fj.kills,
-    fj.deaths,
-    fj.adr,
-    fj.kast_pct,
-    fj.rating
-FROM silver.fato_jogador_mapa fj
-JOIN silver.fato_mapa fm USING (partida_id, mapstats_id)
-JOIN silver.fato_partida fp USING (partida_id)
+    b.rounds, b.kills, b.deaths, b.adr, b.kast_pct, b.rating
+FROM gold.base_jogador_mapa b
 JOIN silver.dim_jogador j USING (jogador_id)
-WHERE fj.eh_furia AND NOT fm.sem_disputa
-ORDER BY fp.data_hora, fj.mapstats_id, j.nick, fj.lado;
+WHERE b.lado = 'TOTAL'
+ORDER BY b.data_hora, b.mapstats_id, j.nick;
+
+-- O mesmo recorte separado por lado (CT e TR). Fica em outra tabela porque o
+-- dashboard só a carrega quando alguém pede a visão por lado.
+CREATE OR REPLACE TABLE gold.detalhe_jogadores_lado AS
+SELECT
+    b.mapstats_id,
+    j.nick                                                AS jogador,
+    b.lado,
+    b.rounds, b.kills, b.deaths, b.adr, b.kast_pct, b.rating
+FROM gold.base_jogador_mapa b
+JOIN silver.dim_jogador j USING (jogador_id)
+WHERE b.lado IN ('CT', 'TR')
+ORDER BY b.data_hora, b.mapstats_id, j.nick, b.lado;
 
 -- Uma linha por ação de veto com autor conhecido.
 CREATE OR REPLACE TABLE gold.detalhe_vetos AS

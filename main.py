@@ -4,7 +4,7 @@
     python main.py historico     percorre todo o histórico e baixa o que faltar
     python main.py reconstruir   refaz silver e gold a partir da bronze, sem rede
 
-Para execução automática (n8n, agendador): --json imprime um resumo na saída padrão
+Para execução automática (n8n, agendador): --json imprime um resumo na saída padrão,
 --espera-desafio limita a espera pela verificação manual do Cloudflare e --publicar
 envia os dados do dashboard ao GitHub (o GitHub Pages serve a pasta docs/).
 """
@@ -23,11 +23,11 @@ MAX_PARTIDAS_NO_RESUMO = 20
 
 def classify_failure(exc: Exception) -> str:
     """Traduz a falha da extração em um status que a automação sabe tratar."""
-    from extract.browser import BrowserUnavailable, PageLoadError
+    from extract.browser import BrowserUnavailable, ChallengeError
 
     if isinstance(exc, BrowserUnavailable):
         return "sem_chrome"
-    if isinstance(exc, PageLoadError) and "Cloudflare" in str(exc):
+    if isinstance(exc, ChallengeError):
         return "cloudflare"
     return "erro"
 

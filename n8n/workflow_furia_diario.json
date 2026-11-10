@@ -116,8 +116,7 @@
       "position": [
         960,
         0
-      ],
-      "onError": "continueRegularOutput"
+      ]
     },
     {
       "parameters": {
@@ -137,6 +136,19 @@
         200
       ],
       "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// O CallMeBot responde com sucesso HTTP mesmo quando recusa a mensagem.\n// Aqui a recusa vira erro, para a execucao aparecer como falha no n8n.\nconst resposta = JSON.stringify($input.first().json);\nif (/APIKey is invalid|color:\\s*red/i.test(resposta)) {\n  throw new Error('O CallMeBot recusou a mensagem: ' + resposta.replace(/<[^>]+>/g, ' ').slice(-200));\n}\nreturn $input.all();"
+      },
+      "id": "a1f0c0de-0008-4000-8000-000000000008",
+      "name": "Conferir WhatsApp",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
     }
   ],
   "connections": {
@@ -188,10 +200,22 @@
           }
         ]
       ]
+    },
+    "WhatsApp (CallMeBot)": {
+      "main": [
+        [
+          {
+            "node": "Conferir WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "executionTimeout": 900
   },
   "active": false
 }

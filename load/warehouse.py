@@ -20,10 +20,10 @@ STAGING = {
     ],
     "matches": [
         ("match_id", _I), ("parser_version", _I), ("match_url", _S), ("unix_ms", _I),
-        ("event_id", _I), ("event_slug", _S), ("event_nome", _S),
+        ("event_id", _I), ("event_nome", _S),
         ("team1_id", _I), ("team1_nome", _S), ("team1_score", _I), ("team1_resultado", _S),
         ("team2_id", _I), ("team2_nome", _S), ("team2_score", _I), ("team2_resultado", _S),
-        ("status", _S), ("encerrada", _B), ("melhor_de", _I), ("online", _B), ("fase", _S),
+        ("encerrada", _B), ("melhor_de", _I), ("online", _B), ("fase", _S),
     ],
     "match_maps": [
         ("match_id", _I), ("ordem", _I), ("mapa", _S), ("mapstats_id", _I), ("jogado", _B),
@@ -33,17 +33,23 @@ STAGING = {
         ("team1_lado_inicial", _S), ("escolhido_por_team_id", _I),
     ],
     "match_vetos": [
-        ("match_id", _I), ("ordem", _I), ("time_nome", _S), ("team_id", _I), ("acao", _S), ("mapa", _S),
+        ("match_id", _I), ("ordem", _I), ("team_id", _I), ("acao", _S), ("mapa", _S),
     ],
     "player_stats": [
         ("match_id", _I), ("mapstats_id", _I), ("team_id", _I), ("player_id", _I), ("nick", _S),
         ("nome_completo", _S), ("lado", _S), ("kills", _I), ("deaths", _I), ("ekills", _I), ("edeaths", _I),
-        ("plus_minus", _I), ("swing_pct", _F), ("adr", _F), ("eadr", _F), ("kast_pct", _F),
+        ("swing_pct", _F), ("adr", _F), ("eadr", _F), ("kast_pct", _F),
         ("ekast_pct", _F), ("rating", _F), ("rating_versao", _S),
     ],
     "event_placements": [("event_id", _I), ("evento_nome", _S), ("colocacao", _S)],
 }
 _MATCH_TABLES = {"matches": "match", "match_maps": "maps", "match_vetos": "vetos", "player_stats": "player_stats"}
+
+
+def _columns(con, table: str) -> list[str]:
+    return [r[0] for r in con.execute(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_schema = 'staging' AND table_name = ? ORDER BY ordinal_position", [table]).fetchall()]
 
 
 def connect(path: Path | None = None) -> duckdb.DuckDBPyConnection:
@@ -52,6 +58,13 @@ def connect(path: Path | None = None) -> duckdb.DuckDBPyConnection:
     con = duckdb.connect(str(path))
     for schema in ("staging", "silver", "gold"):
         con.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
+
+    # Tabela com colunas diferentes das esperadas é descartada e relida da bronze.
+    stale = {t for t, cols in STAGING.items() if (have := _columns(con, t)) and have != [c for c, _ in cols]}
+    if stale & _MATCH_TABLES.keys():
+        stale |= _MATCH_TABLES.keys()  # as quatro andam juntas: `matches` marca o que já foi lido
+    for table in stale:
+        con.execute(f"DROP TABLE IF EXISTS staging.{table}")
     for table, columns in STAGING.items():
         con.register("_empty", pa.Table.from_pylist([], schema=pa.schema(columns)))
         con.execute(f"CREATE TABLE IF NOT EXISTS staging.{table} AS SELECT * FROM _empty")
@@ -70,6 +83,13 @@ def _insert(con, table: str, rows: list[dict]) -> None:
     con.unregister("_rows")
 
 
+def _delete_ids(con, table: str, ids, keep: bool = False) -> None:
+    """Apaga as linhas das partidas em `ids` (ou, com keep=True, de todas as outras)."""
+    con.register("_ids", pa.table({"match_id": pa.array(sorted(ids), type=_I)}))
+    con.execute(f"DELETE FROM staging.{table} WHERE match_id {'NOT ' if keep else ''}IN (SELECT match_id FROM _ids)")
+    con.unregister("_ids")
+
+
 def _parse_matches(paths: list[Path]) -> list[dict]:
     if len(paths) < 40:
         return [parse_match_file(p) for p in paths]
@@ -79,18 +99,25 @@ def _parse_matches(paths: list[Path]) -> list[dict]:
 
 def load_staging(con, bronze_root: Path | None = None, reparse_all: bool = False) -> int:
     """Interpreta o que há de novo na bronze. Devolve quantas partidas foram lidas."""
-    # Lista de resultados: poucas páginas, relidas sempre (a mais nova prevalece).
+    # Lista de resultados: a carga diária só baixa as primeiras páginas, então as linhas
+    # são acumuladas (a página mais nova prevalece) em vez de recriadas a cada execução.
     listing: dict[int, dict] = {}
     for path in reversed(bronze.list_files(bronze.RESULTS, bronze_root)):
         for row in parse_results_page(bronze.load(path))["matches"]:
             listing[row["match_id"]] = row
-    con.execute("DELETE FROM staging.results_listing")
-    _insert(con, "results_listing", list(listing.values()))
+    if listing:
+        _delete_ids(con, "results_listing", listing.keys())
+        _insert(con, "results_listing", list(listing.values()))
 
     events = bronze.list_files(bronze.EVENTS, bronze_root)
     if events:
         con.execute("DELETE FROM staging.event_placements")
         _insert(con, "event_placements", parse_events_page(bronze.load(events[-1])))
+
+    # A bronze é a fonte da verdade: partida sem arquivo sai do banco.
+    files = {int(p.name.split(".")[0]): p for p in bronze.list_files(bronze.MATCHES, bronze_root)}
+    for table in _MATCH_TABLES:
+        _delete_ids(con, table, files.keys(), keep=True)
 
     # Partidas: só as ainda não lidas com a versão atual do parser.
     done = set()
@@ -98,22 +125,20 @@ def load_staging(con, bronze_root: Path | None = None, reparse_all: bool = False
         done = {r[0] for r in con.execute(
             "SELECT match_id FROM staging.matches WHERE parser_version = ?", [settings.PARSER_VERSION]
         ).fetchall()}
-    paths = [p for p in bronze.list_files(bronze.MATCHES, bronze_root) if int(p.name.split(".")[0]) not in done]
+    paths = [p for match_id, p in files.items() if match_id not in done]
     if not paths:
         return 0
 
     logger.info(f"Interpretando {len(paths)} partida(s) da bronze...")
     parsed = _parse_matches(paths)
     ids = [p["match"]["match_id"] for p in parsed]
-    con.register("_ids", pa.table({"match_id": pa.array(ids, type=_I)}))
     for table, key in _MATCH_TABLES.items():
-        con.execute(f"DELETE FROM staging.{table} WHERE match_id IN (SELECT match_id FROM _ids)")
+        _delete_ids(con, table, ids)
         if key == "match":
             rows = [{**p["match"], "parser_version": settings.PARSER_VERSION} for p in parsed]
         else:
             rows = [row for p in parsed for row in p[key]]
         _insert(con, table, rows)
-    con.unregister("_ids")
     return len(parsed)
 
 
@@ -126,31 +151,33 @@ def run_sql_layer(con, layer: str) -> None:
 
 
 def export_gold(con, export_dir: Path | None = None) -> list[str]:
-    """Cada tabela gold vira um .json (para o dashboard HTML) e um .parquet."""
+    """Exporta em JSON as tabelas gold que o dashboard lê."""
     export_dir = Path(export_dir or settings.EXPORT_DIR)
     export_dir.mkdir(parents=True, exist_ok=True)
-    tables = [r[0] for r in con.execute(
-        "SELECT table_name FROM information_schema.tables WHERE table_schema = 'gold' AND table_type = 'BASE TABLE' ORDER BY 1"
-    ).fetchall()]
-    for table in tables:
-        base = (export_dir / table).as_posix()
-        con.execute(f"COPY gold.{table} TO '{base}.json' (FORMAT JSON, ARRAY true)")
-        con.execute(f"COPY gold.{table} TO '{base}.parquet' (FORMAT PARQUET)")
-    return tables
+    for table in settings.DASHBOARD_TABLES:
+        target = (export_dir / f"{table}.json").as_posix()
+        con.execute(f"COPY gold.{table} TO '{target}' (FORMAT JSON, ARRAY true)")
+    return list(settings.DASHBOARD_TABLES)
 
 
 def build(bronze_root: Path | None = None, db_path: Path | None = None,
           export_dir: Path | None = None, reparse_all: bool = False) -> dict:
-    """bronze -> staging -> silver -> gold -> exportação."""
+    """bronze -> staging -> silver -> gold -> exportação. Tudo ou nada: falha no meio desfaz a carga."""
     con = connect(db_path)
     try:
-        parsed = load_staging(con, bronze_root, reparse_all)
-        run_sql_layer(con, "silver")
-        run_sql_layer(con, "gold")
+        con.execute("BEGIN TRANSACTION")
+        try:
+            parsed = load_staging(con, bronze_root, reparse_all)
+            run_sql_layer(con, "silver")
+            run_sql_layer(con, "gold")
+            con.execute("COMMIT")
+        except Exception:
+            con.execute("ROLLBACK")
+            raise
         tables = export_gold(con, export_dir)
         partidas = con.execute("SELECT count(*) FROM silver.fato_partida").fetchone()[0]
     finally:
         con.close()
-    summary = {"partidas_interpretadas": parsed, "partidas_na_silver": partidas, "tabelas_gold": len(tables)}
+    summary = {"partidas_interpretadas": parsed, "partidas_na_silver": partidas, "tabelas_exportadas": len(tables)}
     logger.info(f"Banco atualizado: {summary}")
     return summary
