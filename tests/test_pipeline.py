@@ -175,3 +175,27 @@ def test_new_matches_summary_comes_from_gold(tmp_path):
             for n in novas] == [(2367598, "2023-10-31", "Nouns", "V", 2, 0)]
     assert novas[0]["mapas"] == "Vertigo 13-5, Mirage 13-7"
     json.dumps(novas)  # precisa ser serializável
+
+
+# ------------------------------------------------ gold no grão de mapa (filtros)
+def test_detail_tables_feed_dashboard_filters(tmp_path):
+    _, db, export, _ = _build(tmp_path)
+    con = warehouse.connect(db)
+    q = lambda sql: con.execute(sql).fetchall()
+    # nas fixtures cada partida tem um jogador diferente da FURIA: duas escalações
+    assert q("SELECT lineup_id, jogadores, partidas, mapas FROM gold.lineups ORDER BY lineup_id") == [
+        (1, "arT", 1, 3), (2, "KSCERATO", 1, 2)]
+    assert q("SELECT count(*), count(lineup_id) FROM gold.detalhe_mapas") == [(5, 5)]
+    assert q("SELECT mapa, resultado, rounds_furia, rounds_adversario, lineup_id FROM gold.detalhe_mapas "
+             "WHERE mapstats_id = 165657") == [("Vertigo", "V", 13, 5, 2)]
+    # mesmas linhas da silver, só da FURIA
+    assert q("SELECT count(*) FROM gold.detalhe_jogadores") == q(
+        "SELECT count(*) FROM silver.fato_jogador_mapa WHERE eh_furia")
+    # reagregar o detalhe reproduz a tabela já agregada
+    assert q("SELECT jogador, round(sum(rating * rounds) / sum(rounds), 2) FROM gold.detalhe_jogadores "
+             "WHERE lado = 'TOTAL' GROUP BY jogador ORDER BY jogador") == q(
+        "SELECT jogador, rating FROM gold.jogadores ORDER BY jogador")
+    assert q("SELECT count(*) FROM gold.detalhe_vetos") == q(
+        "SELECT count(*) FROM silver.fato_veto WHERE autor IS NOT NULL")
+    con.close()
+    assert {"lineups", "detalhe_mapas", "detalhe_jogadores", "detalhe_vetos"} <= {p.stem for p in export.glob("*.json")}

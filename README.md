@@ -24,7 +24,24 @@ Como a bronze guarda o HTML original, corrigir ou ampliar o que é lido não exi
 
 **Gold**, `kpis_gerais`, `partidas`, `desempenho_mensal`, `confronto_direto`, `desempenho_por_evento`, `desempenho_por_mapa`, `desempenho_por_mapa_ano`, `vetos`, `jogadores`, `jogador_por_mapa`, `jogador_por_lado`, `jogador_mensal`.
 
+Além das agregadas, a gold tem quatro tabelas no grão de mapa, `lineups`, `detalhe_mapas`, `detalhe_jogadores` e `detalhe_vetos`, para o dashboard filtrar e recalcular no navegador.
+
 As transformações estão em SQL puro, em [`sql/silver`](sql/silver) e [`sql/gold`](sql/gold).
+
+## Dashboard (protótipo)
+
+Duas páginas estáticas em [`prototipo/`](prototipo), que leem os JSON de `data/gold_export/`:
+
+- `index.html`, visão geral: indicadores, a linha do tempo com todas as partidas, forma, mapas e elenco.
+- `analise.html`, análise detalhada em abas: resumo, mapas, jogadores, vetos, adversários, campeonatos e partidas.
+
+As duas têm os mesmos filtros (período, lineup, mapas, jogador, adversário, ambiente e formato) e recalculam tudo conforme o recorte. Para abrir, rode a esteira ao menos uma vez e sirva a pasta do projeto:
+
+```bash
+python -m http.server 8765
+```
+
+Depois acesse `http://localhost:8765/prototipo/`. Ainda é um protótipo local; a publicação em uma URL pública é o próximo passo.
 
 ## Como executar
 
@@ -95,6 +112,7 @@ O que o fluxo executa é [`scripts/run_diario.ps1`](scripts/run_diario.ps1): abr
 ## Estrutura
 
 ```
+prototipo/   dashboard em HTML (visão geral e análise detalhada)
 n8n/         fluxo de atualização automática (importável no n8n)
 scripts/     execução em segundo plano para automatizadores
 config/      caminhos, parâmetros e logging
@@ -118,4 +136,5 @@ python -m pytest tests -q
 - O rating mistura versões da HLTV (2.0 nas partidas antigas, 3.0 nas novas); a coluna `rating_versao` identifica cada linha.
 - O mapa `Default` (vantagem de mapa ou W.O.) conta no placar da série, mas fica fora das estatísticas por mapa (`sem_disputa`).
 - Título é a colocação `1st`; faixas como `1-2nd` não contam como título.
+- LAN ou online só é informado pela HLTV em parte das partidas, quase todas de 2021 em diante; nas demais o campo fica nulo.
 - Fonte dos dados: HLTV.org. O conteúdo bruto (`data/`) não é versionado neste repositório.

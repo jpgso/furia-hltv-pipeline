@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FURIA em dados, protótipo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<link rel="stylesheet" href="comum.css">
+<script src="comum.js"></script>
+<style>
+:root{--bg:#07080a;--panel:#101216;--line:#1e2229;--txt:#f3f4f6;--mut:#8a919e;--acc:#d7ff3e;--loss:#ff4d5e;--gold:#ffc53d}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,sans-serif;line-height:1.5;overflow-x:hidden}
+.mono{font-family:"JetBrains Mono",monospace}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+nav{position:sticky;top:0;z-index:10;background:rgba(7,8,10,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;justify-content:space-between;align-items:center;height:56px}
+.brand{font-family:Anton;font-size:20px;letter-spacing:.06em}
+.brand b{color:var(--acc);font-weight:400}
+nav a{color:var(--mut);text-decoration:none;font-size:13px;margin-left:22px}
+nav a:hover{color:var(--txt)}
+.live{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--acc);box-shadow:0 0 0 0 rgba(215,255,62,.7);animation:pulse 2s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 10px rgba(215,255,62,0)}100%{box-shadow:0 0 0 0 rgba(215,255,62,0)}}
+.fbar{position:sticky;top:56px;z-index:9;background:rgba(7,8,10,.9);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.ftop{display:flex;align-items:center;gap:14px;min-height:46px;flex-wrap:wrap;padding:6px 0}
+.fbtn{background:none;border:1px solid var(--line);color:var(--txt);border-radius:8px;height:32px;padding:0 14px;cursor:pointer;font:inherit;font-size:13px;display:flex;align-items:center;gap:8px}
+.fbtn:hover,.fbtn.on{border-color:var(--acc);color:var(--acc)}
+.fbtn i{font-style:normal;transition:transform .2s}.fbtn.on i{transform:rotate(180deg)}
+.ativos{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
+.ativos span{background:rgba(215,255,62,.12);color:var(--acc);border:1px solid rgba(215,255,62,.3);border-radius:999px;padding:3px 10px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.ftop .conta{font-size:13px}
+.fbar .filtros{margin:4px 0 14px;display:none}.fbar .filtros.aberto{display:block}
+.fbar .barra .conta{display:none}
+.vazio{padding:70px 0;text-align:center;color:var(--mut)}
+.hero{position:relative;padding:72px 0 40px;background:radial-gradient(900px 420px at 78% 0%,rgba(215,255,62,.13),transparent 60%)}
+.kicker{font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--acc)}
+.hero h1{font-family:Anton;font-weight:400;font-size:clamp(46px,8.4vw,118px);line-height:.95;letter-spacing:.01em;margin:14px 0 18px;text-transform:uppercase}
+.hero h1 span{color:var(--acc)}
+.lead{max-width:620px;color:var(--mut);font-size:17px}
+.cta{display:inline-flex;align-items:center;gap:10px;margin-top:26px;background:var(--acc);color:#000;font-weight:600;text-decoration:none;padding:13px 22px;border-radius:10px;transition:transform .15s,box-shadow .15s}
+.cta:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(215,255,62,.25)}
+.mais{display:inline-block;margin-top:14px;color:var(--acc);text-decoration:none;font-size:13px}
+.mais:hover{text-decoration:underline}
+.big{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-top:34px}
+.big div{background:var(--bg);padding:22px 24px}
+.big .n{font-family:Anton;font-size:clamp(34px,5vw,62px);line-height:1}
+.big .n small{font-size:.45em;color:var(--mut);margin-left:4px}
+.big .l{color:var(--mut);font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin-top:8px}
+section{padding:64px 0 8px}
+h2{font-family:Anton;font-weight:400;font-size:clamp(28px,4vw,44px);text-transform:uppercase;letter-spacing:.02em}
+.sub{color:var(--mut);margin:6px 0 24px;max-width:680px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}
+#dna{width:100%;height:210px;display:block;cursor:crosshair}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-top:12px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+#tip{position:fixed;pointer-events:none;background:#000;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;opacity:0;transition:opacity .12s;z-index:20;min-width:210px}
+#tip b{font-size:14px}
+.grid2{display:grid;grid-template-columns:1.6fr 1fr;gap:18px}
+#forma{height:300px}
+.last{display:flex;flex-direction:column;gap:8px}
+.row{display:grid;grid-template-columns:26px 1fr auto;gap:12px;align-items:center;padding:10px 12px;border-radius:10px;background:#0b0d10;border:1px solid var(--line)}
+.badge{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-weight:600;font-size:12px;color:#000}
+.row .who{font-weight:500}.row .ev{font-size:12px;color:var(--mut)}
+.maps{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.map{text-align:center;padding:18px 12px}
+.ring{--p:0;width:108px;height:108px;border-radius:50%;margin:0 auto 12px;display:grid;place-items:center;background:conic-gradient(var(--acc) calc(var(--p)*1%),#1b1f26 0);transition:--p 1.2s}
+.ring::before{content:"";grid-area:1/1;width:88px;height:88px;border-radius:50%;background:var(--panel)}
+.ring span{grid-area:1/1;font-family:Anton;font-size:26px;z-index:1}
+.map .nm{font-weight:600}.map .mt{font-size:12px;color:var(--mut)}
+.sides{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:10px 6px 4px;background:#1b1f26}
+.sides i{display:block;height:100%}
+.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
+.pl{position:relative;overflow:hidden}
+.pl .nick{font-family:Anton;font-size:30px;text-transform:uppercase}
+.pl .rt{font-family:Anton;font-size:54px;color:var(--acc);line-height:1;margin:10px 0 2px}
+.pl .st{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:10px;margin-top:12px}
+.pl .st b{display:block;color:var(--txt);font-size:14px}
+.pipe{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.step{position:relative}.step .k{font-size:11px;letter-spacing:.2em;color:var(--acc);text-transform:uppercase}
+.step .t{font-family:Anton;font-size:26px;margin:6px 0}.step p{font-size:13px;color:var(--mut)}
+.step .v{margin-top:12px;font-size:13px}
+footer{color:var(--mut);font-size:12px;padding:48px 0 60px}
+.rev{opacity:0;transform:translateY(22px);transition:opacity .7s,transform .7s}.rev.on{opacity:1;transform:none}
+@property --p{syntax:"<number>";inherits:false;initial-value:0}
+@media(max-width:820px){.fbar.aberta{position:static}.big{grid-template-columns:repeat(2,1fr)}.grid2,.pipe{grid-template-columns:1fr}nav .links{display:none}}
+</style>
+</head>
+<body>
+<nav><div class="wrap">
+  <div class="brand">FURIA <b>EM DADOS</b></div>
+  <div class="links"><a href="#historia">História</a><a href="#forma-s">Forma</a><a href="#mapas">Mapas</a><a href="#elenco">Elenco</a><a href="#projeto">O projeto</a><a href="analise.html" style="color:var(--acc)">Análise detalhada →</a></div>
+  <div class="live"><span class="dot"></span><span id="atualizado">atualizando…</span></div>
+</div></nav>
+
+<div class="fbar"><div class="wrap">
+  <div class="ftop"><button class="fbtn" id="f-abre">Filtros <i>▾</i></button><div class="ativos" id="f-ativos"></div><div class="conta" id="conta2">carregando…</div></div>
+  <div class="filtros" id="filtros"></div>
+</div></div>
+
+<header class="hero"><div class="wrap">
+  <div class="kicker" id="kicker">Counter-Strike · 2017, 2026</div>
+  <h1><span id="h-part">0</span> <span id="h-pal" style="color:inherit">partidas</span>.<br>Cada round contado.</h1>
+  <p class="lead">Todo o histórico da FURIA na HLTV, coletado e modelado por uma esteira de dados própria que se atualiza sozinha a cada partida.</p>
+  <a class="cta" href="analise.html">Explorar a análise detalhada <span>→</span></a>
+  <div class="big">
+    <div><div class="n"><span id="k-ap">0</span><small>%</small></div><div class="l">Aproveitamento</div></div>
+    <div><div class="n" id="k-tit">0</div><div class="l">Títulos</div></div>
+    <div><div class="n" id="k-seq">0</div><div class="l">Maior sequência de vitórias</div></div>
+    <div><div class="n" id="k-rd">0</div><div class="l">Rounds disputados</div></div>
+  </div>
+</div></header>
+
+<section id="historia"><div class="wrap rev">
+  <h2 id="t-dna">Nove anos em uma linha</h2>
+  <p class="sub">Cada barra é uma partida do recorte, em ordem de data. Para cima, vitória; para baixo, derrota. A altura é o saldo de rounds. Os pontos dourados são os títulos.</p>
+  <div class="card"><canvas id="dna"></canvas>
+    <div class="legend"><span><i style="background:var(--acc)"></i>Vitória</span><span><i style="background:var(--loss)"></i>Derrota</span><span><i style="background:var(--gold);border-radius:50%"></i>Título</span><span>Passe o mouse para ver a partida</span></div>
+  </div>
+</div></section>
+
+<section id="forma-s"><div class="wrap rev">
+  <h2>Forma</h2>
+  <p class="sub">Aproveitamento nas últimas 10 partidas ao longo do tempo, e os resultados mais recentes.</p>
+  <div class="grid2"><div class="card"><div id="forma"></div></div><div class="last" id="ultimas"></div></div>
+  <a class="mais" href="analise.html#partidas">Ver todas as partidas, com filtros →</a>
+</div></section>
+
+<section id="mapas"><div class="wrap rev">
+  <h2>Mapas</h2>
+  <p class="sub">Taxa de vitória em cada mapa. A barra mostra o aproveitamento de rounds como CT e como TR.</p>
+  <div class="maps" id="maps"></div>
+  <a class="mais" href="analise.html#mapas">Ver mapas por período, lineup e lado →</a>
+</div></section>
+
+<section id="elenco"><div class="wrap rev">
+  <h2 id="t-elenco">Elenco atual</h2>
+  <p class="sub" id="s-elenco">Rating médio da HLTV em todos os mapas jogados pela FURIA.</p>
+  <div class="players" id="players"></div>
+  <a class="mais" href="analise.html#jogadores">Ver todos os jogadores, por mapa e por lado →</a>
+</div></section>
+
+<section id="projeto"><div class="wrap rev">
+  <h2>Como isso foi construído</h2>
+  <p class="sub">Arquitetura medalhão, só com ferramentas gratuitas: Python, DuckDB, SQL puro e n8n.</p>
+  <div class="pipe" id="pipe"></div>
+</div></section>
+
+<footer><div class="wrap">Projeto de fã, não oficial. Dados: HLTV.org. Protótipo visual, os números são reais, o layout ainda é um estudo.</div></footer>
+<div id="tip"></div>
+
+<script>
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const ACC = css('--acc'), LOSS = css('--loss'), GOLD = css('--gold');
+const dna = {cron: [], tit: [], passo: 1};
+let forma, primeira = true;
+
+function conta(el, alvo, d = 0) {
+  const de = parseFloat((el.dataset.v || '0')), t0 = performance.now(), dur = primeira ? 1400 : 500;
+  el.dataset.v = alvo;
+  (function passo(t) {
+    const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+    el.textContent = fmt(de + (alvo - de) * e, d);
+    if (p < 1) requestAnimationFrame(passo);
+  })(t0);
+}
+
+carregaBase().then(() => {
+  $('filtros').innerHTML = htmlFiltros();
+  montaFiltros(atualiza);
+  $('f-abre').onclick = () => { $('filtros').classList.toggle('aberto'); $('f-abre').classList.toggle('on'); document.querySelector('.fbar').classList.toggle('aberta'); };
+  preparaDna(); preparaForma();
+  $('pipe').innerHTML = [
+    ['01 · Bronze', 'HTML bruto', 'Cada página da HLTV é baixada uma única vez e guardada compactada.', fmt(B.partidas.length) + ' páginas de partida'],
+    ['02 · Silver', 'Modelo estrela', 'Fatos e dimensões em DuckDB, sempre na ótica da FURIA.', '5 fatos · 5 dimensões'],
+    ['03 · Gold', 'Agregações', 'Tabelas prontas para análise, escritas em SQL puro.', '16 tabelas'],
+    ['04 · n8n', 'Atualização', 'Carga incremental automática, com aviso por WhatsApp e e-mail.', 'a cada 3 horas'],
+  ].map(s => `<div class="card step"><div class="k">${s[0]}</div><div class="t">${s[1]}</div><p>${s[2]}</p><div class="v mono">${s[3]}</div></div>`).join('');
+  $('atualizado').textContent = 'última partida em ' + dataBR(B.max);
+  const obs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('on'); aneis(); } }), {threshold: .12});
+  document.querySelectorAll('.rev').forEach(el => obs.observe(el));
+  atualiza();
+  primeira = false;
+});
+
+function aneis() { requestAnimationFrame(() => document.querySelectorAll('.rev.on .ring').forEach(r => r.style.setProperty('--p', r.dataset.p))); }
+
+// Recalcula toda a página para o recorte dos filtros.
+function atualiza() {
+  const R = recorte(), ativos = filtrosAtivos();
+  $('f-ativos').innerHTML = ativos.map(a => `<span>${a}</span>`).join('');
+  $('conta2').innerHTML = `<b>${fmt(R.partidas.length)}</b> partidas · <b>${fmt(R.mapas.length)}</b> mapas`;
+  const sp = somaPartidas(R.partidas), sm = somaMapas(R.mapas);
+  const eventos = [...new Set(R.partidas.map(p => p.evento))].map(e => B.colocacao.get(e)).filter(e => e && e.pior_posicao === 1);
+  conta($('h-part'), sp.partidas); $('h-pal').textContent = sp.partidas === 1 ? 'partida' : 'partidas';
+  conta($('k-ap'), sp.ap || 0, 1); conta($('k-tit'), eventos.length); conta($('k-seq'), maiorSequencia(R.partidas)); conta($('k-rd'), sm.rv + sm.rp);
+  const anos = R.partidas.length ? [R.partidas[R.partidas.length - 1].data.slice(0, 4), R.partidas[0].data.slice(0, 4)] : null;
+  $('kicker').textContent = 'Counter-Strike · ' + (anos ? (anos[0] === anos[1] ? anos[0] : anos[0] + ', ' + anos[1]) : 'sem partidas') + (ativos.length ? ' · recorte filtrado' : '');
+  $('t-dna').textContent = ativos.length ? 'O recorte em uma linha' : 'Nove anos em uma linha';
+
+  dna.cron = R.partidas.slice().reverse();
+  dna.tit = eventos.map(e => { let i = -1; dna.cron.forEach((p, k) => { if (p.evento === e.evento) i = k; }); return i; }).filter(i => i >= 0);
+  pintaDna();
+
+  let v = 0; const jan = [];
+  forma.setOption({xAxis: {data: dna.cron.map(p => p.data)}, series: [{data: dna.cron.map(p => { jan.push(p.resultado === 'V' ? 1 : 0); v += jan[jan.length - 1]; if (jan.length > 10) v -= jan.shift(); return +(100 * v / jan.length).toFixed(1); })}]});
+
+  $('ultimas').innerHTML = R.partidas.slice(0, 6).map(p => `
+    <div class="row"><div class="badge" style="background:${p.resultado === 'V' ? ACC : p.resultado === 'D' ? LOSS : '#888'}">${p.resultado}</div>
+    <div><div class="who">${p.placar_furia} × ${p.placar_adversario} ${p.adversario}</div><div class="ev">${p.evento}</div></div>
+    <div class="ev mono">${dataBR(p.data).slice(0, 5)}/${p.data.slice(2, 4)}</div></div>`).join('') || '<div class="vazio">Nenhuma partida com esses filtros.</div>';
+
+  const porMapa = [...agrupa(R.mapas, m => m.mapa)].map(([mapa, ms]) => Object.assign({mapa}, somaMapas(ms))).sort((a, b) => b.jogados - a.jogados);
+  const corte = ativos.length ? 1 : 30;
+  $('maps').innerHTML = porMapa.filter(m => m.jogados >= corte).slice(0, 12).map(m => `
+    <div class="card map"><div class="ring" data-p="${m.ap.toFixed(1)}"><span>${fmt(m.ap)}%</span></div>
+    <div class="nm">${m.mapa}</div><div class="mt">${fmt(m.jogados)} jogados · ${m.v}V ${m.d}D</div>
+    <div class="sides"><i style="width:${(m.ct || 0) / 2}%;background:#6aa9ff"></i><i style="width:${(m.tr || 0) / 2}%;background:#ffb04a"></i></div>
+    <div class="mt">CT ${fmt(m.ct)}% · TR ${fmt(m.tr)}%</div></div>`).join('') || '<div class="vazio">Nenhum mapa com esses filtros.</div>';
+  aneis();
+
+  // Elenco: a escalação mais recente do recorte, com as estatísticas dentro dele.
+  let nomes = [];
+  for (let i = R.mapas.length - 1; i >= 0 && !nomes.length; i--) nomes = R.mapas[i].jg.TOTAL.map(j => j.jogador);
+  const linhas = []; R.mapas.forEach(m => m.jg.TOTAL.forEach(j => { if (nomes.includes(j.jogador)) linhas.push(j); }));
+  const elenco = [...agrupa(linhas, j => j.jogador)].map(([jogador, ls]) => Object.assign({jogador}, somaJog(ls))).sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  $('t-elenco').textContent = ativos.length ? 'Elenco do recorte' : 'Elenco atual';
+  $('s-elenco').textContent = ativos.length ? 'A escalação mais recente dentro do recorte, com as médias calculadas só nele.' : 'Rating médio da HLTV em todos os mapas jogados pela FURIA.';
+  $('players').innerHTML = elenco.map(j => `
+    <div class="card pl"><div class="nick">${j.jogador}</div><div class="rt">${fmt(j.rating, 2)}</div><div class="mt" style="color:var(--mut);font-size:12px">rating · ${fmt(j.mapas)} mapas</div>
+    <div class="st"><span><b>${fmt(j.kd, 2)}</b>K/D</span><span><b>${fmt(j.adr, 1)}</b>ADR</span><span><b>${fmt(j.kast_pct, 1)}%</b>KAST</span></div></div>`).join('') || '<div class="vazio">Sem estatísticas individuais neste recorte.</div>';
+}
+
+function preparaDna() {
+  const cv = $('dna'), tip = $('tip');
+  addEventListener('resize', () => pintaDna());
+  cv.addEventListener('mousemove', e => {
+    if (!dna.cron.length) return;
+    const r = cv.getBoundingClientRect(), i = Math.floor((e.clientX - r.left) / dna.passo), p = dna.cron[i];
+    if (!p) { tip.style.opacity = 0; pintaDna(); return; }
+    pintaDna(i);
+    tip.innerHTML = `<div style="color:#8a919e">${dataBR(p.data)} · ${p.evento}</div><b>FURIA ${p.placar_furia} × ${p.placar_adversario} ${p.adversario}</b><div style="color:#8a919e;margin-top:4px">${p.mapas || ''}</div>`;
+    tip.style.opacity = 1;
+    tip.style.left = Math.min(innerWidth - 240, e.clientX + 14) + 'px';
+    tip.style.top = (e.clientY + 16) + 'px';
+  });
+  cv.addEventListener('mouseleave', () => { tip.style.opacity = 0; pintaDna(); });
+}
+
+function pintaDna(destaque = -1) {
+  const cv = $('dna'), cron = dna.cron, r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = r.width * dpr; cv.height = r.height * dpr;
+  const c = cv.getContext('2d'); c.scale(dpr, dpr);
+  const W = r.width, H = r.height, pad = 22, meio = (H - pad) / 2 + 6;
+  c.fillStyle = '#1e2229'; c.fillRect(0, meio, W, 1);
+  if (!cron.length) { c.fillStyle = '#8a919e'; c.font = '13px Inter, sans-serif'; c.fillText('Nenhuma partida com esses filtros.', 12, meio - 12); return; }
+  const passo = Math.min(18, W / cron.length), larg = Math.max(1, passo - (passo > 3 ? 1.5 : .6)), maxS = 26, esc = (meio - 14) / maxS;
+  dna.passo = passo;
+  let marca = '', ultimoX = -99;
+  const porMes = cron.length < 120;
+  cron.forEach((p, i) => {
+    const x = i * passo, rot = porMes ? p.data.slice(5, 7) + '/' + p.data.slice(2, 4) : p.data.slice(0, 4);
+    if (rot !== marca) {
+      marca = rot;
+      if (x - ultimoX > 46) { c.fillStyle = '#14171c'; c.fillRect(x, 0, 1, H - pad); c.fillStyle = '#8a919e'; c.font = '11px JetBrains Mono, monospace'; c.fillText(rot, x + 4, H - 6); ultimoX = x; }
+    }
+    const saldo = Math.max(-maxS, Math.min(maxS, (p.rounds_vencidos || 0) - (p.rounds_perdidos || 0)));
+    const h = Math.max(3, Math.abs(saldo) * esc), v = p.resultado === 'V';
+    c.globalAlpha = destaque < 0 || destaque === i ? 1 : .35;
+    c.fillStyle = v ? ACC : p.resultado === 'D' ? LOSS : '#777';
+    c.fillRect(x, v ? meio - h : meio + 1, larg, h);
+  });
+  c.globalAlpha = 1;
+  dna.tit.forEach(i => { c.fillStyle = GOLD; c.beginPath(); c.arc(i * passo + larg / 2, 7, 3.2, 0, 7); c.fill(); });
+}
+
+function preparaForma() {
+  forma = echarts.init($('forma'));
+  forma.setOption({
+    grid: {left: 38, right: 12, top: 16, bottom: 28},
+    tooltip: {trigger: 'axis', backgroundColor: '#000', borderColor: '#1e2229', textStyle: {color: '#f3f4f6', fontSize: 12},
+      formatter: a => `${dataBR(a[0].axisValue)}<br><b>${fmt(a[0].data, 0)}%</b> nas últimas 10`},
+    xAxis: {type: 'category', data: [], axisLine: {lineStyle: {color: '#1e2229'}}, axisTick: {show: false},
+      axisLabel: {color: '#8a919e', hideOverlap: true, formatter: v => dna.cron.length < 120 ? v.slice(5, 7) + '/' + v.slice(2, 4) : v.slice(0, 4)}},
+    yAxis: {type: 'value', min: 0, max: 100, splitLine: {lineStyle: {color: '#14171c'}}, axisLabel: {color: '#8a919e', formatter: '{value}%'}},
+    series: [{type: 'line', data: [], smooth: .35, symbol: 'none',
+      lineStyle: {color: ACC, width: 2, shadowColor: ACC, shadowBlur: 12},
+      areaStyle: {color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset: 0, color: 'rgba(215,255,62,.32)'}, {offset: 1, color: 'rgba(215,255,62,0)'}])},
+      markLine: {silent: true, symbol: 'none', lineStyle: {color: '#3a404b', type: 'dashed'}, label: {color: '#8a919e', formatter: '50%'}, data: [{yAxis: 50}]}}],
+    animationDuration: 900,
+  });
+  addEventListener('resize', () => forma.resize());
+}
+</script>
+</body>
+</html>
