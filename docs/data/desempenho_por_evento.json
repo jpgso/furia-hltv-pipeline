@@ -1,5 +1,5 @@
 [
-	{"evento_id":8251,"evento":"BLAST Rivals 2026 Season 2","ano":2026,"data_inicio":"2026-11-10","data_fim":"2026-11-10","colocacao":null,"melhor_posicao":null,"pior_posicao":null,"partidas":1,"vitorias":1,"derrotas":0,"aproveitamento":100.0},
+	{"evento_id":8251,"evento":"BLAST Rivals 2026 Season 2","ano":2026,"data_inicio":"2026-11-10","data_fim":"2026-11-12","colocacao":null,"melhor_posicao":null,"pior_posicao":null,"partidas":2,"vitorias":2,"derrotas":0,"aproveitamento":100.0},
 	{"evento_id":8245,"evento":"IEM Beijing 2026","ano":2026,"data_inicio":"2026-11-02","data_fim":"2026-11-06","colocacao":"5-6th","melhor_posicao":5,"pior_posicao":6,"partidas":4,"vitorias":2,"derrotas":2,"aproveitamento":50.0},
 	{"evento_id":8050,"evento":"PGL Masters Bucharest 2026","ano":2026,"data_inicio":"2026-10-24","data_fim":"2026-10-31","colocacao":"1st","melhor_posicao":1,"pior_posicao":1,"partidas":8,"vitorias":6,"derrotas":2,"aproveitamento":75.0},
 	{"evento_id":8932,"evento":"Thunderpick World Championship 2026","ano":2026,"data_inicio":"2026-10-14","data_fim":"2026-10-18","colocacao":"1st","melhor_posicao":1,"pior_posicao":1,"partidas":4,"vitorias":4,"derrotas":0,"aproveitamento":100.0},
