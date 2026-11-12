@@ -1,10 +1,10 @@
-# FURIA x HLTV: esteira de dados em arquitetura medalhão
+# FURIA em dados: esteira em arquitetura medalhão
 
-Coleta o histórico de partidas de CS da FURIA na [HLTV](https://www.hltv.org) e o organiza em três camadas, prontas para alimentar um dashboard. Tudo roda localmente, só com ferramentas gratuitas.
+Organiza o histórico de partidas de CS da FURIA, registrado pela [HLTV](https://www.hltv.org), em três camadas prontas para alimentar um dashboard. Tudo roda localmente, só com ferramentas gratuitas. Projeto de fã, sem fins comerciais e sem vínculo com a HLTV ou com a FURIA; veja [Sobre os dados e a HLTV](#sobre-os-dados-e-a-hltv).
 
 | Camada | O que guarda | Onde |
 |---|---|---|
-| **Bronze** | HTML bruto de cada página, compactado, baixado uma única vez | `data/bronze/**/*.html.gz` |
+| **Bronze** | HTML bruto de cada página de partida, compactado e guardado como veio | `data/bronze/**/*.html.gz` |
 | **Silver** | Modelo estrela (fatos e dimensões), na ótica da FURIA | `data/furia.duckdb`, schema `silver` |
 | **Gold** | Tabelas agregadas e tabelas no grão de mapa para o dashboard | schema `gold`; as que o site usa vão para `docs/data/*.json` |
 
@@ -12,18 +12,17 @@ O caminho de uma partida, da página da HLTV até o site:
 
 ```mermaid
 flowchart LR
-    hltv[(HLTV.org)] -->|Chrome de depuração| coleta[extract<br>crawler e browser]
-    coleta --> bronze[(Bronze<br>HTML compactado)]
+    hltv[(HLTV.org)] -.->|etapa local, fora do repositório| bronze[(Bronze<br>HTML compactado)]
     bronze --> leitura[transform<br>parsers]
     leitura --> silver[(Silver<br>fatos e dimensões)]
     silver -->|sql/gold| gold[(Gold<br>tabelas de análise)]
     gold -->|load| json[docs/data<br>7 arquivos JSON]
     json --> site[GitHub Pages<br>álbum e análise]
-    n8n{{n8n<br>carga diária}} -.->|run_diario.ps1| coleta
+    n8n{{n8n<br>carga diária}} -.-> bronze
     n8n -.->|e-mail e WhatsApp| aviso([aviso de partida nova])
 ```
 
-Como a bronze guarda o HTML original, corrigir ou ampliar o que é lido não exige raspar de novo: basta `python main.py reconstruir`.
+Como a bronze guarda o HTML original, corrigir ou ampliar o que é lido não exige buscar nada de novo: basta `python main.py reconstruir`.
 
 ## Modelo de dados
 
@@ -57,7 +56,7 @@ A análise tem filtros de período, formação, mapas, jogador, adversário, amb
 Os dados ficam em `docs/data/`: a cada execução a esteira copia para lá as tabelas gold que o site usa. Com `--publicar`, ela também faz o commit dessa pasta e o push; o GitHub Pages atualiza o site em seguida. Só há commit quando algum dado mudou.
 
 ```bash
-python main.py diario --publicar
+python main.py --publicar
 ```
 
 Para ver o site localmente:
@@ -74,29 +73,20 @@ python -m http.server 8765 --directory docs
    pip install -r requirements.txt
    ```
 
-2. Abra um Chrome em modo de depuração (PowerShell) e, nessa janela, acesse `https://www.hltv.org`. Se o Cloudflare pedir a verificação "Verify you are human", resolva-a manualmente e deixe a janela aberta:
-
-   ```powershell
-   Start-Process chrome -ArgumentList "--remote-debugging-port=9222", "--user-data-dir=C:\chrome_furia_debug"
-   ```
-
-3. Rode a esteira:
+2. Rode a esteira sobre a bronze guardada em `data/bronze`:
 
    ```bash
-   python main.py diario        # só partidas novas (padrão)
-   python main.py historico     # todo o histórico; pode ser interrompido e retomado
-   python main.py reconstruir   # refaz silver e gold a partir da bronze, sem acessar a internet
+   python main.py               # lê o que há de novo na bronze e atualiza silver, gold e docs/data
+   python main.py reconstruir   # reinterpreta toda a bronze do zero
    ```
 
-   `--limite N` restringe quantas partidas são baixadas na execução (útil para testar).
-
-Se a verificação do Cloudflare aparecer durante a execução, a esteira pausa e aguarda você resolvê-la na janela do Chrome.
+A esteira começa no HTML já guardado no disco. A etapa que abastece a bronze roda só na máquina do autor e não faz parte deste repositório, assim como a pasta `data/`. Sem a bronze, dá para ver o projeto funcionando pelos testes, que montam uma bronze de exemplo, e pelo site, que usa os dados de `docs/data/`.
 
 ## Atualização automática com n8n (opcional)
 
 O fluxo em [`n8n/workflow_furia_diario.json`](n8n/workflow_furia_diario.json) roda a carga diária em segundo plano e avisa por WhatsApp e e-mail quando há partida nova ou quando algo precisa de atenção. Ele dispara uma vez a cada inicialização do n8n. Como o n8n sobe junto com o Windows (passo 6), ligar o computador já atualiza os dados e o dashboard, sem depender de horário fixo.
 
-O n8n precisa rodar **na mesma máquina** da esteira, instalado via Node.js (no Docker ele não alcança o Python nem o Chrome).
+O n8n precisa rodar **na mesma máquina** da esteira, instalado via Node.js (no Docker ele não alcança o Python nem os arquivos locais).
 
 1. Instale o [Node.js 22](https://nodejs.org/dist/latest-v22.x/) (arquivo `-x64.msi`) e depois o n8n. Em versões mais novas do Node, como a 26, a instalação do n8n falha por falta de binários prontos de uma dependência:
 
@@ -130,18 +120,16 @@ O n8n precisa rodar **na mesma máquina** da esteira, instalado via Node.js (no 
 
    Assim o n8n roda escondido, sem depender de uma janela do PowerShell aberta. `N8N_LISTEN_ADDRESS` restringe o acesso ao próprio computador, o que importa porque o nó *Execute Command* está liberado.
 
-O que o fluxo executa é [`scripts/run_diario.ps1`](scripts/run_diario.ps1): abre o Chrome de depuração minimizado se preciso, roda a carga diária com espera curta pelo Cloudflare, publica os dados do dashboard quando há novidade e grava em `data/ultima_execucao.json` uma linha de JSON com `status` (`ok`, `cloudflare`, `sem_chrome`, `erro`) e as partidas novas. O fluxo lê esse arquivo com `type`, porque no Windows o nó *Execute Command* não captura a saída de programas filhos. Se o Cloudflare pedir verificação, a janela do Chrome fica aberta para você resolvê-la, o aviso chega uma vez (no máximo um por dia para o mesmo problema) e a execução seguinte continua de onde parou.
+O fluxo chama um script local de carga, que não faz parte deste repositório, e lê o resumo que ele grava em `data/ultima_execucao.json`: uma linha de JSON com `status` e as partidas novas. A leitura é feita com `type`, porque no Windows o nó *Execute Command* não captura a saída de programas filhos. Quando algo precisa de atenção, o aviso chega uma vez (no máximo um por dia para o mesmo problema) e a execução seguinte continua de onde parou.
 
 ## Estrutura
 
 ```
 docs/        dashboard publicado no GitHub Pages (páginas e dados)
 n8n/         fluxo de atualização automática (importável no n8n)
-scripts/     execução em segundo plano para automatizadores
 config/      caminhos, parâmetros e logging
-extract/     navegação (browser), camada bronze e extração incremental (crawler)
 transform/   leitura do HTML em registros (parsers)
-load/        banco DuckDB, execução do SQL e exportação da gold (warehouse); publicação do dashboard (publish)
+load/        leitura da bronze (bronze), banco DuckDB, execução do SQL e exportação da gold (warehouse); publicação do dashboard (publish)
 sql/         transformações silver e gold
 tests/       testes dos parsers e da construção das camadas
 ```
@@ -164,6 +152,14 @@ Os testes também rodam no GitHub Actions a cada push.
 - LAN ou online só é informado pela HLTV em parte das partidas, quase todas de 2021 em diante; nas demais o campo fica nulo.
 - Fonte dos dados: HLTV.org. O conteúdo bruto (`data/`) não é versionado neste repositório; só as tabelas que o dashboard usa (`docs/data/`).
 
+## Sobre os dados e a HLTV
+
+- Projeto de fã, pessoal e de estudo. Não tem vínculo com a HLTV.org nem com a FURIA.
+- Não tem fins comerciais: sem anúncio, sem venda, sem monetização de qualquer tipo.
+- As estatísticas, o rating e as colocações são da [HLTV.org](https://www.hltv.org), que é a fonte e a dona desse conteúdo. Cada partida do site leva de volta à página original.
+- Este repositório não traz ferramenta de coleta nem o conteúdo bruto das páginas. Ele cobre a modelagem dos dados e o site.
+- Remoção a pedido: se a HLTV ou qualquer titular de direitos quiser que os dados ou o projeto saiam do ar, basta abrir uma [issue](https://github.com/jpgso/furia-hltv-pipeline/issues) e isso será feito.
+
 ## Licença
 
-O código está sob a [licença MIT](LICENSE). Os dados pertencem à HLTV.org e não são cobertos por ela.
+O código está sob a [licença MIT](LICENSE). Os dados pertencem à HLTV.org e não são cobertos por ela; o uso deles aqui é pessoal e não comercial.

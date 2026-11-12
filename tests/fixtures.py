@@ -197,6 +197,3 @@ def events_page() -> str:
         '</tbody></table></body></html>'
     )
 
-
-def challenge_page() -> str:
-    return "<html><head><title>Just a moment...</title></head><body>Verify you are human</body></html>"

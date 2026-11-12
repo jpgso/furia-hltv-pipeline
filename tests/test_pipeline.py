@@ -4,9 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from extract import bronze
-from extract.browser import is_challenge
-from load import warehouse
+from load import bronze, warehouse
 from tests import fixtures
 from transform.parsers import parse_events_page, parse_match_page, parse_results_page
 
@@ -76,11 +74,9 @@ def test_layout_antigo_nao_tem_swing_nem_dados_eco():
     assert (row["adr"], row["kast_pct"], row["rating"], row["rating_versao"]) == (95.2, 76.9, 1.45, "2.0")
 
 
-def test_pagina_de_eventos_e_deteccao_do_cloudflare():
+def test_pagina_de_eventos_traz_as_colocacoes():
     events = parse_events_page(fixtures.events_page())
     assert events[0] == {"event_id": 7289, "evento_nome": "Thunderpick World Championship 2023", "colocacao": "5-8th"}
-    assert is_challenge(fixtures.challenge_page())
-    assert not is_challenge(fixtures.match_new_layout())  # página real cita 'Cloudflare' em scripts, mas não no título
 
 
 # ------------------------------------------------- bronze -> silver -> gold
@@ -153,16 +149,6 @@ def test_reconstrucao_e_incremental_e_idempotente(tmp_path):
 
 
 # ------------------------------------------------------ resumo para automação
-def test_falha_e_classificada_para_a_automacao():
-    from extract.browser import BrowserUnavailable, ChallengeError, PageLoadError
-    from main import classify_failure
-
-    assert classify_failure(BrowserUnavailable("porta fechada")) == "sem_chrome"
-    assert classify_failure(ChallengeError("verificação do Cloudflare não resolvida: url")) == "cloudflare"
-    assert classify_failure(PageLoadError("conteúdo não apareceu: url")) == "erro"
-    assert classify_failure(ValueError("x")) == "erro"
-
-
 def test_resumo_de_partidas_novas_vem_da_gold(tmp_path):
     from main import new_matches
 

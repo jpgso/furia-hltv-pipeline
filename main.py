@@ -1,12 +1,13 @@
-"""Orquestrador da esteira medalhão FURIA x HLTV.
+"""Orquestrador da esteira medalhão: da bronze guardada no disco até o site.
 
-    python main.py diario        baixa só partidas novas e atualiza o banco (padrão)
-    python main.py historico     percorre todo o histórico e baixa o que faltar
-    python main.py reconstruir   refaz silver e gold a partir da bronze, sem rede
+    python main.py               lê o que há de novo na bronze e atualiza silver, gold e docs/data
+    python main.py reconstruir   reinterpreta toda a bronze do zero
 
-Para execução automática (n8n, agendador): --json imprime um resumo na saída padrão,
---espera-desafio limita a espera pela verificação manual do Cloudflare e --publicar
-envia os dados do dashboard ao GitHub (o GitHub Pages serve a pasta docs/).
+A coleta das páginas não faz parte deste repositório: a esteira começa no HTML já
+guardado em data/bronze.
+
+Para execução automática (n8n, agendador): --json imprime um resumo na saída padrão e
+--publicar envia os dados do dashboard ao GitHub (o GitHub Pages serve a pasta docs/).
 """
 import argparse
 import json
@@ -21,19 +22,8 @@ logger = get_logger("pipeline")
 MAX_PARTIDAS_NO_RESUMO = 20
 
 
-def classify_failure(exc: Exception) -> str:
-    """Traduz a falha da extração em um status que a automação sabe tratar."""
-    from extract.browser import BrowserUnavailable, ChallengeError
-
-    if isinstance(exc, BrowserUnavailable):
-        return "sem_chrome"
-    if isinstance(exc, ChallengeError):
-        return "cloudflare"
-    return "erro"
-
-
 def new_matches(match_ids, db_path=None) -> list[dict]:
-    """Partidas recém-baixadas como aparecem na gold, da mais recente para a mais antiga."""
+    """Partidas recém-chegadas como aparecem na gold, da mais recente para a mais antiga."""
     import duckdb
 
     ids = sorted(int(i) for i in match_ids)
@@ -55,33 +45,22 @@ def new_matches(match_ids, db_path=None) -> list[dict]:
     return [dict(zip(cols, row)) for row in rows]
 
 
-def run(mode: str, limit: int | None = None, publish: bool = False) -> dict:
-    from extract import bronze
+def run(mode: str = "atualizar", publish: bool = False, new_ids=(), summary: dict | None = None) -> dict:
+    """Refaz as camadas e sincroniza docs/data.
+
+    `new_ids` são as partidas que acabaram de entrar na bronze, para o resumo; `summary`
+    permite que a etapa anterior (quem abasteceu a bronze) entregue o que já apurou.
+    """
     from load import publish as publisher, warehouse
 
     start = time.time()
-    logger.info(f"=== Esteira FURIA/HLTV | modo: {mode} ===")
-    summary = {"modo": mode, "status": "ok", "mensagem": "", "baixadas": 0, "adiadas": 0,
-               "falhas": 0, "total_partidas": None, "partidas_novas": [], "publicacao": None}
-    before = bronze.saved_match_ids()
-    if mode != "reconstruir":
-        try:
-            from extract.crawler import run_extraction
-
-            stats = run_extraction(full=(mode == "historico"), limit=limit)
-            summary.update({k: stats[k] for k in ("adiadas", "falhas")})
-        except Exception as exc:
-            # O que já foi baixado está salvo na bronze: o banco é atualizado mesmo assim.
-            summary["status"] = classify_failure(exc)
-            summary["mensagem"] = str(exc)
-            logger.critical(f"Extração interrompida: {exc}")
-            logger.error(traceback.format_exc())
-    downloaded = bronze.saved_match_ids() - before
-    summary["baixadas"] = len(downloaded)
+    logger.info(f"=== Esteira FURIA | modo: {mode} ===")
+    summary = {"modo": mode, "status": "ok", "mensagem": "", **(summary or {}),
+               "total_partidas": None, "partidas_novas": [], "publicacao": None}
     try:
         built = warehouse.build(reparse_all=(mode == "reconstruir"))
         summary["total_partidas"] = built.get("partidas_na_silver")
-        summary["partidas_novas"] = new_matches(downloaded)
+        summary["partidas_novas"] = new_matches(new_ids)
         publisher.sync_dashboard_data()          # docs/data sempre acompanha a gold
         if publish:
             summary["publicacao"] = publisher.push_dashboard()
@@ -96,37 +75,39 @@ def run(mode: str, limit: int | None = None, publish: bool = False) -> dict:
     if summary["status"] == "ok":
         logger.info(f"=== Concluído em {summary['duracao_s']}s ===")
     else:
-        logger.warning("Execução incompleta; rode de novo para baixar o restante.")
+        logger.warning("Execução incompleta.")
     return summary
 
 
-def _non_negative(text: str) -> int:
+def non_negative(text: str) -> int:
     value = int(text)
     if value < 0:
         raise argparse.ArgumentTypeError("use um número inteiro maior ou igual a zero")
     return value
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Esteira medalhão FURIA x HLTV")
-    parser.add_argument("modo", nargs="?", default="diario", choices=["diario", "historico", "reconstruir"])
-    parser.add_argument("--limite", type=_non_negative, default=None, help="máximo de partidas a baixar nesta execução")
-    parser.add_argument("--espera-desafio", type=_non_negative, default=None, metavar="SEGUNDOS",
-                        help="espera máxima pela verificação do Cloudflare (execução automática)")
+def add_output_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--publicar", action="store_true", help="envia os dados do dashboard (docs/data) ao GitHub")
     parser.add_argument("--json", action="store_true", help="imprime o resumo da execução em JSON na saída padrão")
     parser.add_argument("--json-arquivo", default=None, metavar="CAMINHO",
                         help="grava o mesmo resumo em um arquivo (para quem não consegue ler a saída padrão)")
-    args = parser.parse_args()
-    if args.espera_desafio is not None:
-        settings.CHALLENGE_TIMEOUT = args.espera_desafio
-        settings.EVENTS_CHALLENGE_TIMEOUT = min(settings.EVENTS_CHALLENGE_TIMEOUT, args.espera_desafio)
-    result = run(args.modo, args.limite, args.publicar)
+
+
+def write_summary(result: dict, json_file: str | None, to_stdout: bool) -> None:
     # Só ASCII: o resumo é lido por outros programas (PowerShell, n8n) sem depender de codificação.
     text = json.dumps(result, ensure_ascii=True)
-    if args.json_arquivo:
-        with open(args.json_arquivo, "w", encoding="ascii") as fh:
+    if json_file:
+        with open(json_file, "w", encoding="ascii") as fh:
             fh.write(text)
-    if args.json:
+    if to_stdout:
         print(text)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Esteira medalhão da FURIA: bronze, silver, gold e site")
+    parser.add_argument("modo", nargs="?", default="atualizar", choices=["atualizar", "reconstruir"])
+    add_output_arguments(parser)
+    args = parser.parse_args()
+    result = run(args.modo, args.publicar)
+    write_summary(result, args.json_arquivo, args.json)
     sys.exit(0 if result["status"] == "ok" else 1)

@@ -6,7 +6,7 @@ import duckdb
 import pyarrow as pa
 
 from config import get_logger, settings
-from extract import bronze
+from load import bronze
 from transform.parsers import parse_events_page, parse_match_page, parse_results_page
 
 logger = get_logger(__name__)
