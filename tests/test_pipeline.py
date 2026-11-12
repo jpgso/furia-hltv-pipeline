@@ -217,6 +217,72 @@ def test_confronto_por_mapa_e_placares(tmp_path):
     assert not {"confronto_por_mapa", "placares"} & {p.stem for p in export.glob("*.json")}
 
 
+# ------------------------------------- o que o site calcula bate com a gold
+def _dashboard(export):
+    """Agregações de docs/comum.js rodadas no Node sobre os JSON exportados."""
+    import shutil
+    import subprocess
+
+    import pytest
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node não instalado")
+    script = Path(__file__).with_name("dashboard_check.js")
+    out = subprocess.run([node, str(script), str(export)], capture_output=True, text=True, encoding="utf-8", check=True)
+    return json.loads(out.stdout)
+
+
+def conferir_dashboard_com_gold(calc, con):
+    """Compara cada agregação do JavaScript com a tabela gold correspondente."""
+    from pytest import approx
+
+    def rows(sql):
+        cur = con.execute(sql)
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, r)) for r in cur.fetchall()]
+
+    def same(js_rows, sql, key, tol):
+        gold = {r[key]: r for r in rows(sql)}
+        assert {r[key] for r in js_rows} == set(gold)
+        for r in js_rows:
+            for col, value in gold[r[key]].items():
+                expected = approx(value, abs=tol.get(col, 0)) if value is not None else None
+                assert r[col] == expected, f"{r[key]}: {col} = {r[col]} no site e {value} na gold"
+
+    geral = rows("SELECT partidas, vitorias, derrotas, aproveitamento, mapas_vencidos, mapas_perdidos, aproveitamento_mapas, "
+                 "maior_sequencia_vitorias AS maior_sequencia FROM gold.kpis_gerais")[0]
+    for col, value in geral.items():
+        assert calc["geral"][col] == approx(value, abs=0.051), col
+    same(calc["mapas"], "SELECT mapa, jogados, vitorias, aproveitamento, aproveitamento_rounds_ct AS ct, aproveitamento_rounds_tr AS tr, "
+                        "prorrogacoes FROM gold.desempenho_por_mapa", "mapa", {"aproveitamento": 0.051, "ct": 0.051, "tr": 0.051})
+    same(calc["jogadores"], "SELECT jogador, mapas, kills, deaths, kd, adr, kast_pct, rating FROM gold.jogadores", "jogador",
+         {"kd": 0.0051, "adr": 0.0051, "kast_pct": 0.0051, "rating": 0.0051})
+    same(calc["adversarios"], "SELECT adversario, partidas, vitorias, derrotas, mapas_vencidos, mapas_perdidos FROM gold.confronto_direto",
+         "adversario", {})
+
+
+def test_agregacoes_do_site_batem_com_a_gold(tmp_path):
+    _, db, export, _ = _build(tmp_path)
+    calc = _dashboard(export)
+    con = warehouse.connect(db)
+    try:
+        conferir_dashboard_com_gold(calc, con)
+    finally:
+        con.close()
+
+
+def test_colocacao_repetida_nao_duplica_o_campeonato(tmp_path):
+    _, db, _, _ = _build(tmp_path)
+    con = warehouse.connect(db)
+    # a mesma colocação aparece de novo sem id e com o nome em outra caixa
+    con.execute("INSERT INTO staging.event_placements VALUES (NULL, 'THUNDERPICK WORLD CHAMPIONSHIP 2023 ', '5-8th')")
+    warehouse.run_sql_layer(con, "silver")
+    assert con.execute("SELECT count(*), count(DISTINCT evento_id) FROM silver.dim_evento").fetchone() == (2, 2)
+    assert con.execute("SELECT colocacao FROM silver.dim_evento WHERE evento_id = 7289").fetchall() == [("5-8th",)]
+    con.close()
+
+
 # ------------------------------------------------------ publicação do dashboard
 def test_copia_dos_dados_so_acusa_mudanca_real(tmp_path):
     from config import settings

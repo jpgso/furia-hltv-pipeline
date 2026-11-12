@@ -60,9 +60,11 @@ WITH eventos AS (
     WHERE event_id IS NOT NULL
     GROUP BY event_id
 ),
+-- Uma colocação por evento: quando a página de eventos não traz o id, casa pelo nome.
 colocacoes AS (
-    SELECT event_id, lower(trim(evento_nome)) AS chave, min(colocacao) AS colocacao
-    FROM staging.event_placements
+    SELECT coalesce(c.event_id, e.evento_id) AS evento_id, min(c.colocacao) AS colocacao
+    FROM staging.event_placements c
+    LEFT JOIN eventos e ON c.event_id IS NULL AND lower(trim(c.evento_nome)) = lower(trim(e.nome))
     GROUP BY ALL
 )
 SELECT
@@ -75,28 +77,5 @@ SELECT
     posicao_inicial(c.colocacao)                                       AS melhor_posicao,
     posicao_final(c.colocacao)                                         AS pior_posicao
 FROM eventos e
-LEFT JOIN colocacoes c
-       ON c.event_id = e.evento_id
-       OR (c.event_id IS NULL AND c.chave = lower(trim(e.nome)));
+LEFT JOIN colocacoes c USING (evento_id);
 
--- Calendário contínuo entre a primeira e a última partida.
-CREATE OR REPLACE TABLE silver.dim_data AS
-WITH limites AS (
-    SELECT min(data_brt(unix_ms)) AS ini, max(data_brt(unix_ms)) AS fim
-    FROM staging.matches
-    WHERE unix_ms IS NOT NULL
-),
-dias AS (
-    SELECT CAST(unnest(generate_series(CAST(ini AS TIMESTAMP), CAST(fim AS TIMESTAMP), INTERVAL 1 DAY)) AS DATE) AS data
-    FROM limites
-    WHERE ini IS NOT NULL
-)
-SELECT
-    data,
-    year(data)                              AS ano,
-    quarter(data)                           AS trimestre,
-    month(data)                             AS mes,
-    ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][month(data)] AS mes_nome,
-    strftime(data, '%Y-%m')                 AS ano_mes,
-    ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][dayofweek(data) + 1]                       AS dia_semana
-FROM dias;

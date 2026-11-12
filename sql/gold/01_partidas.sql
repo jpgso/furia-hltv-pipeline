@@ -73,10 +73,14 @@ m AS (
 ),
 e AS (
     SELECT
-        count(*)                                             AS campeonatos,
         count(*) FILTER (WHERE pior_posicao = 1)             AS titulos,
         count(*) FILTER (WHERE pior_posicao <= 4)            AS top_4
     FROM silver.fato_colocacao_evento
+),
+-- Campeonato conta se tem partida ou colocação: os que ainda não terminaram entram.
+c AS (
+    SELECT count(*) AS campeonatos
+    FROM (SELECT evento_id FROM silver.dim_evento UNION SELECT evento_id FROM silver.fato_colocacao_evento)
 )
 SELECT
     p.partidas, p.vitorias, p.derrotas, p.empates,
@@ -85,9 +89,9 @@ SELECT
     round(100.0 * m.mapas_vencidos / nullif(m.mapas, 0), 1)                               AS aproveitamento_mapas,
     m.rounds_vencidos, m.rounds_perdidos,
     p.sequencia_atual, p.maior_sequencia_vitorias,
-    e.campeonatos, e.titulos, e.top_4,
+    c.campeonatos, e.titulos, e.top_4,
     p.primeira_partida, p.ultima_partida
-FROM p CROSS JOIN m CROSS JOIN e;
+FROM p CROSS JOIN m CROSS JOIN e CROSS JOIN c;
 
 -- Evolução mês a mês.
 CREATE OR REPLACE TABLE gold.desempenho_mensal AS

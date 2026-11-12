@@ -26,7 +26,7 @@ Como a bronze guarda o HTML original, corrigir ou ampliar o que é lido não exi
 
 ## Modelo de dados
 
-**Silver**, dimensões: `dim_time`, `dim_jogador`, `dim_evento`, `dim_mapa`, `dim_data`. Fatos:
+**Silver**, dimensões: `dim_time`, `dim_jogador`, `dim_evento`, `dim_mapa`. Fatos:
 
 | Tabela | Grão |
 |---|---|
@@ -34,11 +34,11 @@ Como a bronze guarda o HTML original, corrigir ou ampliar o que é lido não exi
 | `fato_mapa` | uma linha por mapa jogado, com rounds por lado (CT/TR) e prorrogação |
 | `fato_veto` | uma linha por ação de veto (ban, pick, mapa que sobrou) |
 | `fato_jogador_mapa` | uma linha por jogador × mapa × lado (TOTAL, CT, TR) |
-| `fato_colocacao_evento` | uma linha por campeonato disputado |
+| `fato_colocacao_evento` | uma linha por campeonato com colocação final |
 
 **Gold**, tabelas agregadas: `kpis_gerais`, `partidas`, `desempenho_mensal`, `confronto_direto`, `confronto_por_mapa`, `placares`, `desempenho_por_evento`, `desempenho_por_mapa`, `desempenho_por_mapa_ano`, `vetos`, `jogadores`, `jogador_por_mapa`, `jogador_por_lado`, `jogador_mensal`.
 
-Além das agregadas, a gold tem a tabela `lineups` (uma linha por escalação) e quatro tabelas de detalhe (`detalhe_mapas`, `detalhe_jogadores`, `detalhe_jogadores_lado` e `detalhe_vetos`), que o dashboard filtra e recalcula no navegador.
+Além das agregadas, a gold tem a tabela `lineups` (uma linha por escalação) e quatro tabelas de detalhe (`detalhe_mapas`, `detalhe_jogadores`, `detalhe_jogadores_lado` e `detalhe_vetos`), que o dashboard filtra e recalcula no navegador. As tabelas agregadas são a referência em SQL: o site refaz as mesmas contas em JavaScript por causa dos filtros, e os testes conferem que os dois lados batem.
 
 As transformações estão em SQL puro, em [`sql/silver`](sql/silver) e [`sql/gold`](sql/gold).
 
@@ -84,7 +84,7 @@ A esteira começa no HTML já guardado no disco. A etapa que abastece a bronze r
 
 ## Atualização automática com n8n (opcional)
 
-O fluxo em [`n8n/workflow_furia_diario.json`](n8n/workflow_furia_diario.json) roda a carga diária em segundo plano e avisa por WhatsApp e e-mail quando há partida nova ou quando algo precisa de atenção. Ele dispara uma vez a cada inicialização do n8n. Como o n8n sobe junto com o Windows (passo 6), ligar o computador já atualiza os dados e o dashboard, sem depender de horário fixo.
+O fluxo em [`n8n/workflow_furia_diario.json`](n8n/workflow_furia_diario.json) roda a carga diária em segundo plano e avisa por WhatsApp e e-mail quando há partida nova ou quando algo precisa de atenção. Ele dispara a cada inicialização do n8n e uma vez por dia, às 21h. Como o n8n sobe junto com o Windows (passo 6), ligar o computador já atualiza os dados e o dashboard; o horário fixo cobre os dias em que a máquina fica ligada.
 
 O n8n precisa rodar **na mesma máquina** da esteira, instalado via Node.js (no Docker ele não alcança o Python nem os arquivos locais).
 
@@ -139,6 +139,8 @@ tests/       testes dos parsers e da construção das camadas
 ```bash
 python -m pytest tests -q
 ```
+
+Além dos parsers e das camadas, um teste roda as agregações do dashboard (`docs/comum.js`) no Node sobre os dados de exemplo e compara com as tabelas gold: o que o site calcula no navegador tem de bater com o SQL. Sem Node instalado, esse teste é pulado.
 
 Os testes também rodam no GitHub Actions a cada push.
 

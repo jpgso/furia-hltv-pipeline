@@ -24,15 +24,9 @@ CREATE OR REPLACE MACRO media_ponderada(valor, peso) AS
 
 -- Carreira de cada jogador pela FURIA.
 CREATE OR REPLACE TABLE gold.jogadores AS
-WITH recentes AS (
-    SELECT partida_id FROM silver.fato_partida
-    WHERE partida_id IN (SELECT partida_id FROM silver.fato_jogador_mapa)
-    ORDER BY data_hora DESC LIMIT 5
-)
 SELECT
     j.nick                                                AS jogador,
     j.nome_completo,
-    bool_or(b.partida_id IN (SELECT partida_id FROM recentes)) AS elenco_atual,
     count(DISTINCT b.partida_id)                          AS partidas,
     count(*)                                              AS mapas,
     pct_vitorias(b.resultado) AS aproveitamento_mapas,
