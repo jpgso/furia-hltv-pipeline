@@ -65,7 +65,7 @@
     },
     {
       "parameters": {
-        "command": "=powershell -NoProfile -ExecutionPolicy Bypass -File \"{{ $json.pasta_projeto }}\\scripts\\run_diario.ps1\" > nul 2>&1 & type \"{{ $json.pasta_projeto }}\\data\\ultima_execucao.json\""
+        "command": "=powershell -NoProfile -ExecutionPolicy Bypass -File \"{{ $json.pasta_projeto }}\\extract\\run_diario.ps1\" > nul 2>&1 & type \"{{ $json.pasta_projeto }}\\data\\ultima_execucao.json\""
       },
       "id": "b56d196e-0cee-48f3-a003-fdfa8d0c6dc6",
       "name": "Rodar esteira",
@@ -78,7 +78,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Le o resumo em JSON que o script devolve e decide se ha algo a avisar.\n// Sem novidade, devolve lista vazia: os nos de notificacao nao rodam.\nconst cfg = $('Configuracao').first().json;\nconst saida = String($input.first().json.stdout || '').trim();\nconst linha = saida.split(/\\r?\\n/).filter(l => l.trim().startsWith('{')).pop();\n\nlet r;\ntry {\n  r = JSON.parse(linha);\n} catch (e) {\n  r = { status: 'erro', mensagem: 'Saida inesperada do script: ' + saida.slice(0, 300), partidas_novas: [] };\n}\n\nconst memoria = $getWorkflowStaticData('global');\nconst agora = Date.now();\nconst UM_DIA = 24 * 60 * 60 * 1000;\nconst rotulo = { V: 'Vitoria', D: 'Derrota', E: 'Empate' };\nconst novas = r.partidas_novas || [];\nconst pub = r.publicacao || {};\n\nlet assunto = null;\nlet texto = null;\n\nif (novas.length) {\n  const linhas = novas.map(p =>\n    `${rotulo[p.resultado] || p.resultado}: FURIA ${p.placar_furia} x ${p.placar_adversario} ${p.adversario} (${p.data})\\n` +\n    `${p.evento || ''}\\n${p.mapas || ''}`);\n  const extra = r.baixadas > novas.length ? `\\n\\n(+${r.baixadas - novas.length} partida(s) mais antigas)` : '';\n  assunto = `FURIA: ${r.baixadas} partida(s) nova(s) no dashboard`;\n  texto = `${assunto}\\n\\n${linhas.join('\\n\\n')}${extra}`;\n  if (pub.status === 'publicado' && cfg.url_dashboard) texto += `\\n\\nDashboard atualizado: ${cfg.url_dashboard}`;\n}\n\n// Problema na carga ou na publicacao do dashboard.\nconst problema = r.status !== 'ok' ? r.status : (pub.status === 'erro' ? 'publicacao' : null);\nif (problema) {\n  // O mesmo problema so e avisado de novo depois de 24 horas.\n  const repetido = memoria.ultimoErro === problema && agora - (memoria.avisoErroEm || 0) < UM_DIA;\n  if (!repetido) {\n    const aviso = problema === 'cloudflare'\n      ? 'A HLTV pediu a verificacao do Cloudflare. Resolva-a na janela do Chrome que ficou aberta; a proxima execucao continua de onde parou.'\n      : problema === 'publicacao'\n        ? `Os dados foram atualizados, mas o envio do dashboard ao GitHub falhou: ${pub.mensagem}`\n        : `A carga diaria falhou (${r.status}): ${r.mensagem}`;\n    assunto = assunto || 'FURIA: a carga diaria precisa de atencao';\n    texto = texto ? `${texto}\\n\\n${aviso}` : `${assunto}\\n\\n${aviso}`;\n    memoria.avisoErroEm = agora;\n  }\n  memoria.ultimoErro = problema;\n} else {\n  memoria.ultimoErro = null;\n}\n\nif (!texto) return [];\nreturn [{ json: { ...cfg, status: r.status, assunto, texto } }];"
+        "jsCode": "// Le o resumo em JSON que o script devolve e decide se ha algo a avisar.\n// Sem novidade, devolve lista vazia: os nos de notificacao nao rodam.\nconst cfg = $('Configuracao').first().json;\nconst saida = String($input.first().json.stdout || '').trim();\nconst linha = saida.split(/\\r?\\n/).filter(l => l.trim().startsWith('{')).pop();\n\nlet r;\ntry {\n  r = JSON.parse(linha);\n} catch (e) {\n  r = { status: 'erro', mensagem: 'Saida inesperada do script: ' + saida.slice(0, 300), partidas_novas: [] };\n}\n\nconst memoria = $getWorkflowStaticData('global');\nconst agora = Date.now();\nconst UM_DIA = 24 * 60 * 60 * 1000;\nconst rotulo = { V: 'Vitoria', D: 'Derrota', E: 'Empate' };\nconst novas = r.partidas_novas || [];\nconst pub = r.publicacao || {};\n// Caminhos da maquina nao saem dela: o aviso passa por servicos de terceiros.\nconst limpa = t => String(t || '').replace(/[A-Za-z]:\\\\[^\\s\"']+/g, '[caminho local]').slice(0, 300);\n\nlet assunto = null;\nlet texto = null;\n\nif (novas.length) {\n  const linhas = novas.map(p =>\n    `${rotulo[p.resultado] || p.resultado}: FURIA ${p.placar_furia} x ${p.placar_adversario} ${p.adversario} (${p.data})\\n` +\n    `${p.evento || ''}\\n${p.mapas || ''}`);\n  const extra = r.baixadas > novas.length ? `\\n\\n(+${r.baixadas - novas.length} partida(s) mais antigas)` : '';\n  assunto = `FURIA: ${r.baixadas} partida(s) nova(s) no dashboard`;\n  texto = `${assunto}\\n\\n${linhas.join('\\n\\n')}${extra}`;\n  if (pub.status === 'publicado' && cfg.url_dashboard) texto += `\\n\\nDashboard atualizado: ${cfg.url_dashboard}`;\n}\n\n// Problema na carga ou na publicacao do dashboard.\nconst problema = r.status !== 'ok' ? r.status : (pub.status === 'erro' ? 'publicacao' : null);\nif (problema) {\n  // O mesmo problema so e avisado de novo depois de 24 horas.\n  const repetido = memoria.ultimoErro === problema && agora - (memoria.avisoErroEm || 0) < UM_DIA;\n  if (!repetido) {\n    const aviso = problema === 'cloudflare'\n      ? 'A HLTV pediu a verificacao do Cloudflare. Resolva-a na janela do Chrome que ficou aberta; a proxima execucao continua de onde parou.'\n      : problema === 'publicacao'\n        ? `Os dados foram atualizados, mas o envio do dashboard ao GitHub falhou: ${limpa(pub.mensagem)}`\n        : `A carga diaria falhou (${r.status}): ${limpa(r.mensagem)}`;\n    assunto = assunto || 'FURIA: a carga diaria precisa de atencao';\n    texto = texto ? `${texto}\\n\\n${aviso}` : `${assunto}\\n\\n${aviso}`;\n    memoria.avisoErroEm = agora;\n  }\n  memoria.ultimoErro = problema;\n} else {\n  memoria.ultimoErro = null;\n}\n\nif (!texto) return [];\nreturn [{ json: { ...cfg, status: r.status, assunto, texto } }];"
       },
       "id": "abed29b7-424a-4b98-b00d-586855f9a482",
       "name": "Montar aviso",
@@ -154,6 +154,26 @@
         1200,
         200
       ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 21
+            }
+          ]
+        }
+      },
+      "id": "4c1f7a52-6d0e-4b53-9a8e-2f6b1c0d9e37",
+      "name": "Todo dia as 21h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
     }
   ],
   "connections": {
@@ -216,11 +236,23 @@
           }
         ]
       ]
+    },
+    "Todo dia as 21h": {
+      "main": [
+        [
+          {
+            "node": "Configuracao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
     "executionOrder": "v1",
-    "executionTimeout": 900
+    "executionTimeout": 900,
+    "timezone": "America/Sao_Paulo"
   },
   "active": false
 }
