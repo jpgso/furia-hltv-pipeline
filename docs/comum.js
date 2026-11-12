@@ -49,9 +49,11 @@ let lados;                        // estatísticas por lado (CT/TR), carregadas 
 
 function jogDoMapa(id) { let o = B.jog.get(id); if (!o) B.jog.set(id, o = {TOTAL: [], CT: [], TR: []}); return o; }
 
-async function carregaBase() {
-  const [partidas, mapas, jog, vetos, lineups, eventos] = await Promise.all(
-    ['partidas', 'detalhe_mapas', 'detalhe_jogadores', 'detalhe_vetos', 'lineups', 'desempenho_por_evento'].map(get));  // jog: só o mapa inteiro
+// Os vetos só interessam à análise; o álbum passa `comVetos = false` e não baixa o arquivo.
+async function carregaBase(comVetos = true) {
+  const arquivos = ['partidas', 'detalhe_mapas', 'detalhe_jogadores', 'lineups', 'desempenho_por_evento'];  // jogadores: só o mapa inteiro
+  if (comVetos) arquivos.push('detalhe_vetos');
+  const [partidas, mapas, jog, lineups, eventos, vetos = []] = await Promise.all(arquivos.map(get));
   B.partida = new Map(partidas.map(p => [p.partida_id, p]));
   B.partidas = partidas;                                   // da mais recente para a mais antiga
   B.jog = new Map();
@@ -126,7 +128,7 @@ function recorte() {
     (!jg || m.jg.TOTAL.some(j => j.jogador === jg)));
   const ids = new Set(mapas.map(m => m.partida_id));
   const partidas = B.partidas.filter(p => ids.has(p.partida_id) || (!nivelMapa && !B.comMapa.has(p.partida_id) && okPartida(p)));
-  return {mapas, partidas, ids: new Set(partidas.map(p => p.partida_id)), nivelMapa, jg};
+  return {mapas, partidas, ids: new Set(partidas.map(p => p.partida_id)), nivelMapa};
 }
 
 // Texto curto de cada filtro ativo, para mostrar o recorte em uma linha.

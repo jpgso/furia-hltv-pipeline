@@ -23,7 +23,7 @@ function render() {
   const R = recorte(), ativos = filtrosAtivos();
   $('h-n').textContent = fmt(R.mapas.length);
   $('h-s').textContent = `${R.mapas.length === 1 ? 'Jogado' : 'Jogados'} em ${fmt(R.partidas.length)} ${R.partidas.length === 1 ? 'partida' : 'partidas'}` +
-    (ativos.length ? `, no recorte: ${ativos.join(', ')}.` : ' desde 2017. Use os filtros para recortar; todas as abas respondem a eles.');
+    (ativos.length ? `, no recorte: ${ativos.join(', ')}.` : ` desde ${B.min.slice(0, 4)}. Use os filtros para recortar; todas as abas respondem a eles.`);
   $('conta').innerHTML = `<b>${fmt(R.partidas.length)}</b> partidas e <b>${fmt(R.mapas.length)}</b> mapas no recorte` + (R.nivelMapa ? ' <span class="nota">(as partidas contam quando têm ao menos um mapa no filtro)</span>' : '');
   if (!R.partidas.length) { $('conteudo').innerHTML = '<div class="vazio">Nenhuma partida com esses filtros. Remova algum para ampliar o recorte.</div>'; return; }
   ({resumo, mapas: abaMapas, jogadores, vetos, adversarios, grandes, placares, campeonatos, partidas: abaPartidas})[aba](R);
@@ -84,7 +84,7 @@ function resumo(R) {
   let ano = '', campo = '';
   R.mapas.forEach(m => {
     const a = m.data.slice(0, 4); if (a !== ano) { ano = a; campo += `<b>${a}</b>`; }
-    campo += `<i class="${m.resultado === 'V' ? '' : 'd'}" style="--c:var(--${m.lado_inicial_furia === 'TR' ? 'tr' : 'ct'})" data-tip="${esc(`${dataBR(m.data)}\n${m.mapa}: FURIA ${m.rounds_furia} x ${m.rounds_adversario} ${m.p.adversario}\nComeçou de ${m.lado_inicial_furia}`)}"></i>`;
+    campo += `<i class="${m.resultado === 'V' ? '' : 'd'}" style="--c:var(--${m.lado_inicial_furia === 'TR' ? 'tr' : m.lado_inicial_furia === 'CT' ? 'ct' : 'cz'})" data-tip="${esc(`${dataBR(m.data)}\n${m.mapa}: FURIA ${m.rounds_furia} x ${m.rounds_adversario} ${m.p.adversario}${m.lado_inicial_furia ? '\nComeçou de ' + m.lado_inicial_furia : ''}`)}"></i>`;
   });
   const porMes = agrupa(R.partidas, p => p.data.slice(0, 7)), maxMes = Math.max(...[...porMes.values()].map(x => x.length));
   const anos = [...new Set(R.partidas.map(p => p.data.slice(0, 4)))].sort();
@@ -148,7 +148,7 @@ function jogadores(R) {
     ${calor(nj, nomesMapa, (n, mp) => { const ls = jm.get(n + '|' + mp); if (!ls || ls.length < 3) return null; const s = somaJog(ls); return s.rating == null ? null : {v: s.rating, txt: fmt(s.rating, 2), tip: `${n} em ${mp}\nRating ${fmt(s.rating, 2)} em ${ls.length} mapas`}; }, tintaRating)}`;
   $('seg').onclick = async e => {
     const l = e.target.dataset.l; if (!l) return;
-    if (l !== 'TOTAL') await carregaLados();
+    if (l !== 'TOTAL') { try { await carregaLados(); } catch (erro) { lados = null; falhaDeCarga(erro, $('conteudo')); return; } }
     lado = l; render();
   };
 }
@@ -161,7 +161,7 @@ function vetos(R) {
     const c = (a, ac) => l.filter(v => v.autor === a && v.acao === ac).length;
     return {mapa, bf: c('FURIA', 'BAN'), pf: c('FURIA', 'PICK'), ba: c('ADVERSARIO', 'BAN'), pa: c('ADVERSARIO', 'PICK')};
   });
-  const maior = k => esc(linhas.slice().sort((a, b) => b[k] - a[k])[0].mapa);
+  const maior = k => { const l = linhas.slice().sort((a, b) => b[k] - a[k])[0]; return l[k] ? esc(l.mapa) : '–'; };  // sem nenhuma ocorrência, não aponta mapa
   const por = e => { const ms = R.mapas.filter(m => m.escolha === e); return ms.length ? p1(pct(ms.filter(m => m.resultado === 'V').length, ms.length)) + '%' : '–'; };
   $('conteudo').innerHTML = cifras([[fmt(series), 'séries com veto registrado'], [maior('bf'), 'é o mapa que a FURIA mais bane'], [maior('pf'), 'é o que a FURIA mais escolhe'], [maior('ba'), 'é o que os adversários mais banem']]) + `
     <h2>Quem escolheu o mapa pesa no resultado</h2>${cifras([[por('FURIA'), 'de vitórias no mapa escolhido pela FURIA'], [por('ADVERSARIO'), 'no mapa escolhido pelo adversário'], [por('DECISIVO'), 'no mapa que sobrou, o decisivo']])}

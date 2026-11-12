@@ -9,9 +9,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&family=Bowlby+One&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="comum.css?v=3.0.0">
-<script defer src="comum.js?v=3.0.0"></script>
-<script defer src="index.js?v=3.0.0"></script>
+<link rel="stylesheet" href="comum.css?v=3.0.1">
+<script defer src="comum.js?v=3.0.1"></script>
+<script defer src="index.js?v=3.0.1"></script>
 <style>
 main>section,footer{padding:0 var(--mg)}
 h1{font:400 clamp(40px,5.3vw,88px)/.92 var(--gorda);letter-spacing:-.02em;margin:0 0 20px}
@@ -137,12 +137,12 @@ footer p{border-top:3px solid var(--ink);padding-top:12px;max-width:none}
 
 <section class="bloco feito" id="feito">
   <h2>Como este álbum é feito</h2>
-  <p class="sub">Nada aqui é digitado à mão. Uma esteira de dados em arquitetura medalhão, só com ferramentas gratuitas, refaz a página sempre que a FURIA joga.</p>
+  <p class="sub">Nada aqui é digitado à mão. Uma esteira de dados em arquitetura medalhão, só com ferramentas gratuitas, refaz a página a cada carga de partidas novas.</p>
   <ol>
     <li><b>Bronze</b>Cada página de partida da HLTV fica guardada como veio, compactada, e serve de fonte para todo o resto. <span id="f-bronze"></span></li>
     <li><b>Limpeza</b>Consultas SQL no DuckDB transformam o HTML em fatos e dimensões, sempre do ponto de vista da FURIA.</li>
     <li><b>Análise</b>Outra camada de SQL monta as tabelas prontas para consulta. Sete delas viram os arquivos que esta página lê.</li>
-    <li><b>Rotina</b>Um fluxo no n8n repete tudo todos os dias e avisa por e-mail e WhatsApp quando entra partida nova.</li>
+    <li><b>Rotina</b>Um fluxo no n8n roda a carga quando o computador liga e uma vez por dia, às 21h, e avisa por e-mail e WhatsApp quando entra partida nova.</li>
   </ol>
 </section>
 </main>

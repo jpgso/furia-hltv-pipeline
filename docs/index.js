@@ -3,7 +3,7 @@ const EXTENSO = ['zero', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete
 const MIN_CAPITULO = 50;          // partidas para uma formação ganhar página própria
 const MIN_TRAJETORIA = 100;       // mapas para um jogador entrar nas trajetórias
 
-carregaBase().then(() => {
+carregaBase(false).then(() => {
   ligaDicas();
   const cron = B.partidas.slice().reverse();
   const formacaoDa = new Map();                    // partida -> formação do primeiro mapa
@@ -51,7 +51,7 @@ function jogadoresEm(nomes, ms) {
 function capa(cron, atual, trofeus) {
   const sp = somaPartidas(cron), anos = +B.max.slice(0, 4) - +B.min.slice(0, 4);
   $('titulo').textContent = `O álbum de ${EXTENSO[anos] || anos} anos da FURIA`;
-  $('lide').textContent = `São ${fmt(sp.partidas)} partidas, ${fmt(sp.v)} vitórias, ${trofeus} troféus e ${B.lineups.length} formações, tiradas da HLTV e coladas aqui uma por uma.`;
+  $('lide').textContent = `São ${fmt(sp.partidas)} partidas, ${fmt(sp.v)} vitórias, ${trofeus} troféus e ${B.lineups.length} formações, registradas pela HLTV e coladas aqui uma por uma.`;
   $('capa-t').textContent = `Página ${atual.id}, a formação de agora`;
   $('capa-s').textContent = `${fmt(atual.partidas.length)} partidas juntos. Nas figurinhas, o rating e os mapas de toda a passagem de cada um pela FURIA.`;
   const ultimo = cron.filter(p => { const c = B.colocacao.get(p.evento); return c && c.pior_posicao === 1; }).pop();
@@ -123,7 +123,7 @@ function trajetorias(atuais) {
   const linhas = []; B.mapas.forEach(m => m.jg.TOTAL.forEach(j => linhas.push(Object.assign({s: sem(m.data), data: m.data}, j))));
   const W = 260, H = 84, MIN = .75, MAX = 1.45, x = i => 4 + (W - 8) * i / (eixo.length - 1), y = r => H - 6 - (H - 12) * (Math.max(MIN, Math.min(MAX, r)) - MIN) / (MAX - MIN);
   const jogadores = [...agrupa(linhas, j => j.jogador)].filter(([, ls]) => ls.length >= MIN_TRAJETORIA).map(([nome, ls]) => {
-    const porSem = agrupa(ls, j => j.s), pontos = eixo.map((s, i) => { const g = porSem.get(s); return g && g.length >= 5 ? [x(i), y(somaJog(g).rating), s, somaJog(g).rating, g.length] : null; });
+    const porSem = agrupa(ls, j => j.s), pontos = eixo.map((s, i) => { const g = porSem.get(s); if (!g || g.length < 5) return null; const r = somaJog(g).rating; return [x(i), y(r), s, r, g.length]; });
     return {nome, pontos, total: somaJog(ls), de: ls[0].data, ate: ls[ls.length - 1].data};
   }).sort((a, b) => a.de.localeCompare(b.de));
   $('traj').innerHTML = jogadores.map(j => {
