@@ -1,25 +1,67 @@
-/* Base visual compartilhada pelas duas páginas: preto e branco, com verde e vermelho só para resultado. */
-:root{--bg:#0a0a0c;--panel:#131317;--line:#26262d;--txt:#f5f5f7;--mut:#9a9aa6;--acc:#2bd576;--loss:#ff4757;--gold:#ffc53d;--ct:#6aa9ff;--tr:#ffb04a;
-  --disp:"Barlow Condensed","Arial Narrow",sans-serif;--corpo:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+/* Base das duas páginas. O álbum (index) é amarelo; a análise é branca. Em ambas, cheio é vitória e vazado é derrota. */
+:root{--am:#f6c915;--am2:#e9b900;--ink:#141210;--face:#fffdf5;--cz:#5f5a50;--fio:#d9d5c9;--ct:#1d4fd7;--tr:#e2531b;
+  --holo:linear-gradient(115deg,#ff7ad9,#ffe66b 22%,#6bffd0 44%,#6bb8ff 66%,#c58bff 82%,#ff7ad9);
+  --gorda:"Bowlby One","Arial Black",sans-serif;--tx:Archivo,"Helvetica Neue",Arial,sans-serif;--mg:clamp(16px,4vw,56px)}
 *{box-sizing:border-box;margin:0}
-body{background:var(--bg);color:var(--txt);font-family:var(--corpo);line-height:1.5}
-.mono{font-variant-numeric:tabular-nums}
-.brand{font-family:var(--disp);font-style:italic;font-weight:800;font-size:26px;text-transform:uppercase;color:var(--txt);text-decoration:none;line-height:1}
-.brand b{font-weight:800;color:transparent;-webkit-text-stroke:1px var(--txt)}
+html{scroll-behavior:smooth}
+body{background:var(--am);color:var(--ink);font:500 17px/1.45 var(--tx);overflow-x:hidden}
+body.poster{background:#fff;font-size:15px}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--ct);outline-offset:2px}
+button{font:inherit;color:inherit}
+.n{font-variant-numeric:tabular-nums}
 
-/* Painel de filtros compartilhado pelas duas páginas. */
-.filtros{background:rgba(10,10,12,.95);border:1px solid var(--line);border-radius:2px;padding:14px 16px;font-size:14px}
+.topo{display:flex;justify-content:space-between;align-items:baseline;gap:8px 22px;flex-wrap:wrap;font-size:14px;margin:0 var(--mg);padding:20px 0 10px;border-bottom:3px solid var(--ink)}
+.topo .marca{font-weight:800;text-decoration:none}
+.topo nav{display:flex;gap:6px 20px;flex-wrap:wrap}
+.topo nav a{text-decoration:none;border-bottom:2px solid transparent}
+.topo nav a:hover{border-color:var(--ink)}
+.topo nav a.forte{font-weight:800;border-color:var(--ink)}
+
+/* Figurinha: moldura clara, arte preta listrada, apelido e rating. */
+.figs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 16px}
+.figs.cinco{grid-template-columns:repeat(5,minmax(0,1fr))}
+.fig{background:var(--face);border-radius:7px;padding:7px;box-shadow:3px 4px 0 rgba(20,18,16,.55);transform:rotate(var(--r,0deg));aspect-ratio:3/4;display:flex;flex-direction:column;min-width:0}
+.fig .arte{flex:1;border-radius:3px;background-color:var(--ink);color:var(--face);display:flex;align-items:flex-end;padding:8px;position:relative;overflow:hidden;container-type:inline-size;
+  background-image:repeating-linear-gradient(var(--a,40deg),transparent 0 9px,rgba(255,255,255,.09) 9px 11px)}
+.fig .arte::before{content:attr(data-l);position:absolute;left:-4cqw;bottom:-22cqw;font:400 118cqw/1 var(--gorda);color:rgba(255,255,255,.1);text-transform:uppercase}
+.fig.holo .arte::before{color:rgba(20,18,16,.12)}
+.fig .nick,.fig .rt{position:relative}
+.fig .num{position:absolute;top:6px;left:7px;font-weight:700;font-size:12px;background:var(--am);color:var(--ink);padding:1px 7px;border-radius:9px}
+.fig .rt{position:absolute!important;top:3px;right:8px;font:400 clamp(22px,3.1vw,44px)/1.15 var(--gorda);color:var(--am)}
+.fig .nick{font:400 clamp(13px,1.75vw,26px)/1.05 var(--gorda);overflow-wrap:anywhere}
+.fig .pe{display:flex;justify-content:space-between;gap:6px;font-size:12px;padding:6px 3px 0;white-space:nowrap}
+.fig.holo .arte{background-image:var(--holo);color:var(--ink)}
+.fig.holo .rt{color:var(--ink)}
+.fig.holo .pe{white-space:normal}
+
+/* Barras em linha: rótulo, valor e faixa. */
+.barras{display:grid;gap:9px}
+.br{display:grid;grid-template-columns:1fr auto;gap:1px 10px;align-items:baseline}
+.br b{font-weight:800;font-variant-numeric:tabular-nums}
+.br small{font-size:12px;opacity:.75;font-weight:500;margin-left:6px}
+.br u{grid-column:1/-1;height:7px;background:linear-gradient(90deg,var(--ink) var(--p,0%),rgba(20,18,16,.14) 0)}
+
+#tip{position:fixed;z-index:30;pointer-events:none;background:var(--ink);color:#fff;font:500 13px/1.35 var(--tx);padding:8px 11px;max-width:270px;white-space:pre-line;opacity:0;transition:opacity .1s}
+.vazio{padding:50px 0;text-align:center}
+
+/* Filtros da análise. */
+.filtros{border:2px solid var(--ink);padding:14px 16px;font-size:14px}
 .fl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 12px;align-items:end}
-.fl label{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin-bottom:4px}
-.filtros select,.filtros input[type=date],.filtros input[type=text]{width:100%;height:36px;background:#101013;color:var(--txt);border:1px solid var(--line);border-radius:2px;padding:0 10px;font:inherit;color-scheme:dark}
-.filtros select:focus,.filtros input:focus{outline:1px solid var(--txt)}
+.fl label{display:block;font-size:13px;font-weight:700;margin-bottom:3px}
+.filtros select,.filtros input[type=date],.filtros input[type=text]{width:100%;height:38px;background:#fff;color:var(--ink);border:1.5px solid var(--ink);border-radius:0;padding:0 9px;font:inherit}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;align-items:center}
-.chip{border:1px solid var(--line);background:#101013;color:var(--mut);border-radius:2px;padding:5px 12px;font-size:12px;cursor:pointer;user-select:none}
-.chip:hover{border-color:var(--txt);color:var(--txt)}
-.chip.on{background:var(--txt);border-color:var(--txt);color:#000;font-weight:600}
-.chips .rot{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin-right:4px}
-.barra{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);flex-wrap:wrap}
-.conta{color:var(--mut)}.conta b{color:var(--txt)}
-button.limpar{background:none;border:1px solid var(--line);color:var(--txt);border-radius:2px;height:32px;padding:0 14px;cursor:pointer;font:inherit}
-button.limpar:hover{background:var(--txt);border-color:var(--txt);color:#000}
-.nota{color:var(--mut);font-size:12px}
+.chips .rot{font-size:13px;font-weight:700;margin-right:4px}
+.chip{border:1.5px solid var(--ink);background:#fff;padding:4px 11px;font-size:13px;cursor:pointer}
+.chip:hover{background:var(--am)}
+.chip.on{background:var(--ink);color:#fff;font-weight:700}
+.barra{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--fio);flex-wrap:wrap}
+.conta b{font-weight:800}
+button.limpar{background:#fff;border:1.5px solid var(--ink);height:34px;padding:0 14px;cursor:pointer}
+button.limpar:hover{background:var(--am)}
+.nota{color:var(--cz);font-size:13px}
+
+@media(max-width:820px){.figs.cinco{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:520px){body{font-size:16px}.figs{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 10px}.fig .nick{font-size:17px}.fig .rt{font-size:26px}
+  .figs.cinco{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 8px}.cinco .fig{padding:4px;border-radius:5px}.cinco .fig .nick{font-size:12px}.cinco .fig .rt{font-size:18px}.cinco .fig .num{font-size:10px;padding:0 5px}.cinco .fig .pe{font-size:10px;padding-top:4px}.cinco .fig .pe span+span{display:none}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}

@@ -4,15 +4,31 @@ const get = f => fetch(D + f + '.json').then(r => { if (!r.ok) throw new Error(`
 const $ = id => document.getElementById(id);
 const fmt = (n, d) => { d = typeof d === 'number' ? d : 0; return n == null || isNaN(n) ? '–' : Number(n).toLocaleString('pt-BR', {minimumFractionDigits: d, maximumFractionDigits: d}); };
 const pct = (a, b) => b ? 100 * a / b : null;
+const periodo = (de, ate) => de.slice(0, 4) === ate.slice(0, 4) ? de.slice(0, 4) : de.slice(0, 4) + ' a ' + ate.slice(0, 4);
 const dataBR = s => s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4);
 // Os textos vêm de páginas de terceiros: sempre escapados antes de virar HTML.
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 
-// Cores dos gráficos: as mesmas variáveis do comum.css.
-const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const ACC = css('--acc'), LOSS = css('--loss'), GOLD = css('--gold'), MUT = css('--mut'), LINE = css('--line'), TXT = css('--txt');
-const COR_CT = css('--ct'), COR_TR = css('--tr');
-const corResultado = r => r === 'V' ? ACC : r === 'D' ? LOSS : '#888';
+// Dica que acompanha o mouse: qualquer elemento com data-tip mostra o texto dele.
+function ligaDicas() {
+  const tip = document.body.appendChild(Object.assign(document.createElement('div'), {id: 'tip'}));
+  addEventListener('mousemove', e => {
+    const alvo = e.target.closest ? e.target.closest('[data-tip]') : null;
+    if (!alvo) { tip.style.opacity = 0; return; }
+    tip.textContent = alvo.dataset.tip; tip.style.opacity = 1;
+    tip.style.left = Math.max(8, Math.min(innerWidth - tip.offsetWidth - 8, e.clientX + 14)) + 'px';
+    tip.style.top = (e.clientY + 18 + tip.offsetHeight > innerHeight ? e.clientY - tip.offsetHeight - 10 : e.clientY + 18) + 'px';
+  });
+}
+
+// Lista de barras horizontais: [{rot, val, txt, extra}], com `val` de 0 a `max`.
+function barras(linhas, max = 100) {
+  return '<div class="barras">' + linhas.map(l => `<div class="br"><span>${esc(l.rot)}${l.extra ? `<small>${esc(l.extra)}</small>` : ''}</span><b>${esc(l.txt)}</b><u style="--p:${Math.max(0, Math.min(100, 100 * (l.val || 0) / max)).toFixed(1)}%"></u></div>`).join('') + '</div>';
+}
+
+// "a, b e c"
+const lista = xs => xs.length < 2 ? xs.join('') : xs.slice(0, -1).join(', ') + ' e ' + xs[xs.length - 1];
+const nomesDe = l => l.jogadores.split(' · ');
 
 // 'AAAA-MM-DD' n meses antes, calculado em UTC para não depender do fuso do navegador.
 function mesesAntes(data, n) {
@@ -56,14 +72,14 @@ function carregaLados() {
 function htmlFiltros() {
   return `
     <div class="fl">
-      <div><label>Período</label><select id="f-pre"></select></div>
-      <div><label>De</label><input type="date" id="f-de"></div>
-      <div><label>Até</label><input type="date" id="f-ate"></div>
-      <div style="grid-column:span 2"><label>Lineup</label><select id="f-lineup"></select></div>
-      <div><label>Jogador</label><select id="f-jog"></select></div>
-      <div><label>Adversário</label><input type="text" id="f-adv" list="l-adv" placeholder="Todos"><datalist id="l-adv"></datalist></div>
-      <div><label title="A HLTV só informa LAN ou online em parte das partidas, quase todas de 2021 em diante">Ambiente (desde 2021)</label><select id="f-amb"><option value="">Todos</option><option value="lan">LAN</option><option value="online">Online</option></select></div>
-      <div><label>Formato</label><select id="f-fmt"><option value="">Todos</option><option>bo1</option><option>bo3</option><option>bo5</option></select></div>
+      <div><label for="f-pre">Período</label><select id="f-pre"></select></div>
+      <div><label for="f-de">De</label><input type="date" id="f-de"></div>
+      <div><label for="f-ate">Até</label><input type="date" id="f-ate"></div>
+      <div style="grid-column:span 2"><label for="f-lineup">Formação</label><select id="f-lineup"></select></div>
+      <div><label for="f-jog">Jogador</label><select id="f-jog"></select></div>
+      <div><label for="f-adv">Adversário</label><input type="text" id="f-adv" list="l-adv" placeholder="Todos"><datalist id="l-adv"></datalist></div>
+      <div><label for="f-amb" title="A HLTV só informa LAN ou online em parte das partidas, quase todas de 2021 em diante">Ambiente (desde 2021)</label><select id="f-amb"><option value="">Todos</option><option value="lan">LAN</option><option value="online">Online</option></select></div>
+      <div><label for="f-fmt">Formato</label><select id="f-fmt"><option value="">Todos</option><option>bo1</option><option>bo3</option><option>bo5</option></select></div>
     </div>
     <div class="chips" id="f-mapas"><span class="rot">Mapas</span></div>
     <div class="barra"><div class="conta" id="conta"></div><button class="limpar" id="limpar">Limpar filtros</button></div>`;
@@ -75,12 +91,12 @@ function montaFiltros(aoMudar) {
   $('f-pre').innerHTML = '<option value="">Todo o período</option><option value="m3">Últimos 3 meses</option><option value="m12">Últimos 12 meses</option>' + anos.map(a => `<option value="${a}">${a}</option>`).join('') + '<option value="x">Personalizado</option>';
   $('f-de').min = $('f-ate').min = B.min; $('f-de').max = $('f-ate').max = B.max;
   $('f-lineup').innerHTML = '<option value="">Todas</option>' + B.lineups.slice().sort((a, b) => b.ultima_partida.localeCompare(a.ultima_partida)).map(l =>
-    `<option value="${l.lineup_id}">${esc(l.jogadores)} (${l.primeira_partida.slice(0, 4)}${l.ultima_partida.slice(0, 4) !== l.primeira_partida.slice(0, 4) ? '–' + l.ultima_partida.slice(2, 4) : ''} · ${l.mapas} mapas)</option>`).join('');
+    `<option value="${l.lineup_id}">${esc(nomesDe(l).join(', '))} (${periodo(l.primeira_partida, l.ultima_partida)}, ${l.mapas} mapas)</option>`).join('');
   const cont = {}; B.linhasJog.forEach(j => { cont[j.jogador] = (cont[j.jogador] || 0) + 1; });
   $('f-jog').innerHTML = '<option value="">Todos</option>' + Object.entries(cont).sort((a, b) => b[1] - a[1]).map(([n, c]) => `<option value="${esc(n)}">${esc(n)} (${c})</option>`).join('');
   $('l-adv').innerHTML = [...new Set(B.partidas.map(p => p.adversario))].sort().map(a => `<option value="${esc(a)}">`).join('');
   const cm = {}; B.mapas.forEach(m => cm[m.mapa] = (cm[m.mapa] || 0) + 1);
-  $('f-mapas').insertAdjacentHTML('beforeend', Object.entries(cm).sort((a, b) => b[1] - a[1]).map(([n]) => `<span class="chip" data-m="${esc(n)}">${esc(n)}</span>`).join(''));
+  $('f-mapas').insertAdjacentHTML('beforeend', Object.entries(cm).sort((a, b) => b[1] - a[1]).map(([n]) => `<button type="button" class="chip" data-m="${esc(n)}">${esc(n)}</button>`).join(''));
   $('f-mapas').onclick = e => { const m = e.target.dataset.m; if (!m) return; F.mapas.has(m) ? F.mapas.delete(m) : F.mapas.add(m); e.target.classList.toggle('on'); aoMudar(); };
   $('f-pre').onchange = () => {
     const v = $('f-pre').value;
@@ -117,7 +133,7 @@ function recorte() {
 function filtrosAtivos() {
   const a = [], de = $('f-de').value, ate = $('f-ate').value, pre = $('f-pre');
   if (de || ate) a.push(pre.value && pre.value !== 'x' ? pre.options[pre.selectedIndex].text : `${de ? dataBR(de) : 'início'} a ${ate ? dataBR(ate) : 'hoje'}`);
-  if ($('f-lineup').value) a.push((B.lineups.find(l => l.lineup_id === +$('f-lineup').value) || {}).jogadores);
+  if ($('f-lineup').value) a.push(nomesDe(B.lineups.find(l => l.lineup_id === +$('f-lineup').value)).join(', '));
   if (F.mapas.size) a.push([...F.mapas].join(', '));
   if ($('f-jog').value) a.push($('f-jog').value);
   if ($('f-adv').value.trim()) a.push('contra ' + $('f-adv').value.trim());

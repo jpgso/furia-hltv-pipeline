@@ -1,133 +1,148 @@
-// Visão geral: indicadores, linha do tempo, forma, mapas e elenco.
-const dna = {cron: [], tit: [], passo: 1};
-let forma;
+// O álbum: capa, uma figurinha por partida, capítulos por formação, trajetórias e prateleira de troféus.
+const EXTENSO = ['zero', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove', 'dez', 'onze', 'doze', 'treze', 'catorze', 'quinze'];
+const MIN_CAPITULO = 50;          // partidas para uma formação ganhar página própria
+const MIN_TRAJETORIA = 100;       // mapas para um jogador entrar nas trajetórias
 
 carregaBase().then(() => {
-  $('filtros').innerHTML = htmlFiltros();
-  montaFiltros(atualiza);
-  $('f-abre').onclick = () => { $('filtros').classList.toggle('aberto'); $('f-abre').classList.toggle('on'); document.querySelector('.fbar').classList.toggle('aberta'); };
-  preparaDna(); preparaForma();
-  $('pipe').innerHTML = [
-    ['01', 'Bronze', 'HTML bruto', 'Cada página da HLTV é baixada uma única vez e guardada compactada.', fmt(B.partidas.length) + ' páginas de partida'],
-    ['02', 'Silver', 'Modelo estrela', 'Fatos e dimensões em DuckDB, sempre na ótica da FURIA.', 'fatos e dimensões'],
-    ['03', 'Gold', 'Agregações', 'Tabelas prontas para análise, escritas em SQL puro.', 'agregadas e por mapa'],
-    ['04', 'n8n', 'Atualização', 'Carga incremental automática, com aviso por WhatsApp e e-mail.', 'a cada vez que o PC liga'],
-  ].map(s => `<div class="card step"><div class="k">${s[0]}</div><div class="t"><small>${s[1]}</small>${s[2]}</div><p>${s[3]}</p><div class="v mono">${s[4]}</div></div>`).join('');
-  $('atualizado').textContent = B.meta.atualizado_em ? 'atualizado em ' + dataBR(B.meta.atualizado_em) : 'última partida em ' + dataBR(B.max);
-  atualiza();
-}).catch(e => {
-  console.error(e);
-  $('atualizado').textContent = 'dados indisponíveis';
-  $('conta2').textContent = 'Não foi possível carregar os dados. Recarregue a página em instantes.';
-});
+  ligaDicas();
+  const cron = B.partidas.slice().reverse();
+  const formacaoDa = new Map();                    // partida -> formação do primeiro mapa
+  B.mapas.forEach(m => { if (!formacaoDa.has(m.partida_id)) formacaoDa.set(m.partida_id, m.lineup_id); });
+  const finais = new Map();                        // partida que fechou um troféu -> campeonato
+  const ultimaDo = new Map(); cron.forEach(p => ultimaDo.set(p.evento, p));
+  ultimaDo.forEach((p, ev) => { const c = B.colocacao.get(ev); if (c && c.pior_posicao === 1) finais.set(p.partida_id, ev); });
 
-// Recalcula toda a página para o recorte dos filtros.
-function atualiza() {
-  const R = recorte(), ativos = filtrosAtivos();
-  $('f-ativos').innerHTML = ativos.map(a => `<span>${esc(a)}</span>`).join('');
-  $('conta2').innerHTML = `<b>${fmt(R.partidas.length)}</b> partidas · <b>${fmt(R.mapas.length)}</b> mapas`;
-  const sp = somaPartidas(R.partidas), sm = somaMapas(R.mapas);
-  const eventos = [...new Set(R.partidas.map(p => p.evento))].map(e => B.colocacao.get(e)).filter(e => e && e.pior_posicao === 1);
-  $('h-part').textContent = fmt(sp.partidas); $('h-pal').textContent = sp.partidas === 1 ? 'partida' : 'partidas';
-  $('k-ap').textContent = fmt(sp.ap || 0, 1); $('k-tit').textContent = fmt(eventos.length);
-  $('k-seq').textContent = fmt(maiorSequencia(R.partidas)); $('k-rd').textContent = fmt(sm.rv + sm.rp);
-  // Placar geral: a barra reparte a largura entre vitórias, empates e derrotas.
-  [['v', sp.v], ['e', sp.e], ['d', sp.d]].forEach(([k, n]) => { $('b-' + k).style.flex = n; $('b-' + k).style.display = n ? '' : 'none'; });
-  $('l-v').textContent = fmt(sp.v); $('l-d').textContent = fmt(sp.d);
-  $('l-e').textContent = sp.e ? `${sp.e} ${sp.e === 1 ? 'empate' : 'empates'}` : '';
-  const anos = R.partidas.length ? [R.partidas[R.partidas.length - 1].data.slice(0, 4), R.partidas[0].data.slice(0, 4)] : null;
-  $('kicker').textContent = 'Counter-Strike · ' + (anos ? (anos[0] === anos[1] ? anos[0] : anos[0] + ' a ' + anos[1]) : 'sem partidas') + (ativos.length ? ' · recorte filtrado' : '');
-  $('t-dna').textContent = ativos.length ? 'O recorte em uma linha' : 'Toda a história em uma linha';
+  const eras = B.lineups.map(l => {
+    const mapas = B.mapas.filter(m => m.lineup_id === l.lineup_id), ids = new Set(mapas.map(m => m.partida_id));
+    const partidas = cron.filter(p => formacaoDa.get(p.partida_id) === l.lineup_id);
+    return {l, id: l.lineup_id, nomes: nomesDe(l), mapas, ids, partidas, sp: somaPartidas(partidas),
+      trofeus: partidas.filter(p => finais.has(p.partida_id)).map(p => p.evento)};
+  });
+  const capitulos = eras.filter(e => e.partidas.length >= MIN_CAPITULO);
 
-  dna.cron = R.partidas.slice().reverse();
-  dna.tit = eventos.map(e => { let i = -1; dna.cron.forEach((p, k) => { if (p.evento === e.evento) i = k; }); return i; }).filter(i => i >= 0);
-  pintaDna();
+  capa(cron, eras[eras.length - 1], finais.size);
+  fita(cron, formacaoDa, finais);
+  $('caps').innerHTML = capitulos.map((e, i) => capitulo(e, capitulos[i - 1])).join('');
+  outras(eras.filter(e => e.partidas.length < MIN_CAPITULO));
+  acendeAoRolar(capitulos);
+  trajetorias(eras[eras.length - 1].nomes);
+  prateleira();
+  $('f-bronze').textContent = `Já são ${fmt(B.partidas.length)}.`;
+  $('atualizado').textContent = B.meta.atualizado_em ? 'Atualizado em ' + dataBR(B.meta.atualizado_em) : 'Última partida em ' + dataBR(B.max);
+}).catch(e => { $('atualizado').textContent = 'Dados indisponíveis'; falhaDeCarga(e, $('capa-figs')); });
 
-  let v = 0; const jan = [];
-  forma.setOption({xAxis: {data: dna.cron.map(p => p.data)}, series: [{data: dna.cron.map(p => { jan.push(p.resultado === 'V' ? 1 : 0); v += jan[jan.length - 1]; if (jan.length > 10) v -= jan.shift(); return +(100 * v / jan.length).toFixed(1); })}]});
+// ------------------------------------------------------------------ peças
+const angulo = nome => [...nome].reduce((s, c) => s + c.charCodeAt(0), 0) * 37 % 180;
+const torto = i => [-2, 1.5, -1, 2, -1.5, 2.5][i % 6];
 
-  $('ultimas').innerHTML = R.partidas.slice(0, 6).map(p => `
-    <div class="row" style="--c:${corResultado(p.resultado)}"><div class="sc">${p.placar_furia}×${p.placar_adversario}</div>
-    <div><div class="who">${esc(p.adversario)}</div><div class="ev">${esc(p.evento)}</div></div>
-    <div class="ev mono">${dataBR(p.data).slice(0, 5)}/${p.data.slice(2, 4)}</div></div>`).join('') || '<div class="vazio">Nenhuma partida com esses filtros.</div>';
-
-  const porMapa = [...agrupa(R.mapas, m => m.mapa)].map(([mapa, ms]) => Object.assign({mapa}, somaMapas(ms))).sort((a, b) => b.jogados - a.jogados);
-  const corte = ativos.length ? 1 : 30;
-  $('maps').innerHTML = porMapa.filter(m => m.jogados >= corte).slice(0, 12).map(m => `
-    <div class="card map"><div class="ring" style="--p:${m.ap.toFixed(1)};--c:${m.ap >= 50 ? ACC : LOSS}"><span>${fmt(m.ap)}%</span></div>
-    <div class="nm">${esc(m.mapa)}</div><div class="mt">${fmt(m.jogados)} jogados · ${m.v}V ${m.d}D</div>
-    <div class="sides"><i style="width:${(m.ct || 0) / 2}%;background:${COR_CT}"></i><i style="width:${(m.tr || 0) / 2}%;background:${COR_TR}"></i></div>
-    <div class="mt">CT ${fmt(m.ct)}% · TR ${fmt(m.tr)}%</div></div>`).join('') || '<div class="vazio">Nenhum mapa com esses filtros.</div>';
-
-  // Elenco: a escalação mais recente do recorte, com as estatísticas dentro dele.
-  let nomes = [];
-  for (let i = R.mapas.length - 1; i >= 0 && !nomes.length; i--) nomes = R.mapas[i].jg.TOTAL.map(j => j.jogador);
-  const linhas = []; R.mapas.forEach(m => m.jg.TOTAL.forEach(j => { if (nomes.includes(j.jogador)) linhas.push(j); }));
-  const elenco = [...agrupa(linhas, j => j.jogador)].map(([jogador, ls]) => Object.assign({jogador}, somaJog(ls))).sort((a, b) => (b.rating || 0) - (a.rating || 0));
-  $('t-elenco').textContent = ativos.length ? 'Elenco do recorte' : 'Elenco atual';
-  $('s-elenco').textContent = ativos.length ? 'A escalação mais recente dentro do recorte, com as médias calculadas só nele.' : 'Rating médio da HLTV em todos os mapas jogados pela FURIA.';
-  $('players').innerHTML = elenco.map(j => `
-    <div class="card pl" style="--c:${j.rating >= 1 ? ACC : LOSS}"><div class="nick">${esc(j.jogador)}</div><div class="rt">${fmt(j.rating, 2)}</div><div class="mt">rating · ${fmt(j.mapas)} mapas</div>
-    <div class="st"><span><b>${fmt(j.kd, 2)}</b>K/D</span><span><b>${fmt(j.adr, 1)}</b>ADR</span><span><b>${fmt(j.kast_pct, 1)}%</b>KAST</span></div></div>`).join('') || '<div class="vazio">Sem estatísticas individuais neste recorte.</div>';
+function figurinha(j, numero, i) {
+  return `<div class="fig" style="--r:${torto(i)}deg;--a:${angulo(j.jogador)}deg;--i:${i}"><div class="arte" data-l="${esc(j.jogador[0])}"><span class="num">${numero}</span>
+    <span class="rt n">${fmt(j.rating, 2)}</span><span class="nick">${esc(j.jogador)}</span></div>
+    <div class="pe"><span>${fmt(j.mapas)} mapas</span><span>${fmt(j.kd, 2)} K/D</span></div></div>`;
 }
 
-function preparaDna() {
-  const cv = $('dna'), tip = $('tip');
-  addEventListener('resize', () => pintaDna());
-  cv.addEventListener('mousemove', e => {
-    if (!dna.cron.length) return;
-    const r = cv.getBoundingClientRect(), i = Math.floor((e.clientX - r.left) / dna.passo), p = dna.cron[i];
-    if (!p) { tip.style.opacity = 0; pintaDna(); return; }
-    pintaDna(i);
-    tip.innerHTML = `<div style="color:${MUT}">${dataBR(p.data)} · ${esc(p.evento)}</div><b>FURIA ${p.placar_furia} × ${p.placar_adversario} ${esc(p.adversario)}</b><div style="color:${MUT};margin-top:4px">${esc(p.mapas)}</div>`;
-    tip.style.opacity = 1;
-    tip.style.left = Math.min(innerWidth - 240, e.clientX + 14) + 'px';
-    tip.style.top = (e.clientY + 16) + 'px';
-  });
-  cv.addEventListener('mouseleave', () => { tip.style.opacity = 0; pintaDna(); });
+// Estatísticas dos jogadores `nomes` dentro dos mapas `ms`, na ordem dos nomes.
+function jogadoresEm(nomes, ms) {
+  const linhas = new Map(nomes.map(n => [n, []]));
+  ms.forEach(m => m.jg.TOTAL.forEach(j => { if (linhas.has(j.jogador)) linhas.get(j.jogador).push(j); }));
+  return nomes.map(n => Object.assign({jogador: n}, somaJog(linhas.get(n))));
 }
 
-function pintaDna(destaque = -1) {
-  const cv = $('dna'), cron = dna.cron, r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
-  cv.width = r.width * dpr; cv.height = r.height * dpr;
-  const c = cv.getContext('2d'); c.scale(dpr, dpr);
-  const W = r.width, H = r.height, pad = 22, meio = (H - pad) / 2 + 6;
-  c.fillStyle = LINE; c.fillRect(0, meio, W, 1);
-  if (!cron.length) { c.fillStyle = MUT; c.font = '13px system-ui, sans-serif'; c.fillText('Nenhuma partida com esses filtros.', 12, meio - 12); return; }
-  const passo = Math.min(18, W / cron.length), larg = Math.max(1, passo - (passo > 3 ? 1.5 : .6)), maxS = 26, escala = (meio - 14) / maxS;
-  dna.passo = passo;
-  let marca = '', ultimoX = -99;
-  const porMes = cron.length < 120;
-  cron.forEach((p, i) => {
-    const x = i * passo, rot = porMes ? p.data.slice(5, 7) + '/' + p.data.slice(2, 4) : p.data.slice(0, 4);
-    if (rot !== marca) {
-      marca = rot;
-      if (x - ultimoX > 46) { c.fillStyle = '#1c1c22'; c.fillRect(x, 0, 1, H - pad); c.fillStyle = MUT; c.font = '11px system-ui, sans-serif'; c.fillText(rot, x + 4, H - 6); ultimoX = x; }
-    }
-    const saldo = Math.max(-maxS, Math.min(maxS, (p.rounds_vencidos || 0) - (p.rounds_perdidos || 0)));
-    const h = Math.max(3, Math.abs(saldo) * escala), v = p.resultado === 'V';
-    c.globalAlpha = destaque < 0 || destaque === i ? 1 : .35;
-    c.fillStyle = corResultado(p.resultado);
-    c.fillRect(x, v ? meio - h : meio + 1, larg, h);
-  });
-  c.globalAlpha = 1;
-  dna.tit.forEach(i => { c.fillStyle = GOLD; c.beginPath(); c.arc(i * passo + larg / 2, 7, 3.2, 0, 7); c.fill(); });
+function capa(cron, atual, trofeus) {
+  const sp = somaPartidas(cron), anos = +B.max.slice(0, 4) - +B.min.slice(0, 4);
+  $('titulo').textContent = `O álbum de ${EXTENSO[anos] || anos} anos da FURIA`;
+  $('lide').textContent = `São ${fmt(sp.partidas)} partidas, ${fmt(sp.v)} vitórias, ${trofeus} troféus e ${B.lineups.length} formações, tiradas da HLTV e coladas aqui uma por uma.`;
+  $('capa-t').textContent = `Página ${atual.id}, a formação de agora`;
+  $('capa-s').textContent = `${fmt(atual.partidas.length)} partidas juntos. Nas figurinhas, o rating e os mapas de toda a passagem de cada um pela FURIA.`;
+  const ultimo = cron.filter(p => { const c = B.colocacao.get(p.evento); return c && c.pior_posicao === 1; }).pop();
+  $('capa-figs').innerHTML = jogadoresEm(atual.nomes, B.mapas).map((j, i) => figurinha(j, atual.id * 10 + i + 1, i)).join('') +
+    `<div class="fig holo" style="--r:${torto(5)}deg;--i:5"><div class="arte" data-l="${trofeus}"><span class="num">brilhante</span><span class="rt n">${trofeus}</span><span class="nick">troféus</span></div>
+     <div class="pe"><span>${ultimo ? 'O mais recente: ' + esc(ultimo.evento) : ''}</span></div></div>`;
 }
 
-function preparaForma() {
-  forma = echarts.init($('forma'));
-  forma.setOption({
-    grid: {left: 38, right: 12, top: 16, bottom: 28},
-    tooltip: {trigger: 'axis', backgroundColor: '#000', borderColor: LINE, textStyle: {color: TXT, fontSize: 12},
-      formatter: a => `${dataBR(a[0].axisValue)}<br><b>${fmt(a[0].data, 0)}%</b> nas últimas 10`},
-    xAxis: {type: 'category', data: [], axisLine: {lineStyle: {color: LINE}}, axisTick: {show: false},
-      axisLabel: {color: MUT, hideOverlap: true, formatter: v => dna.cron.length < 120 ? v.slice(5, 7) + '/' + v.slice(2, 4) : v.slice(0, 4)}},
-    yAxis: {type: 'value', min: 0, max: 100, splitLine: {lineStyle: {color: '#1c1c22'}}, axisLabel: {color: MUT, formatter: '{value}%'}},
-    series: [{type: 'line', data: [], smooth: .35, symbol: 'none',
-      lineStyle: {color: ACC, width: 2.5},
-      areaStyle: {color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset: 0, color: 'rgba(43,213,118,.34)'}, {offset: 1, color: 'rgba(43,213,118,0)'}])},
-      markLine: {silent: true, symbol: 'none', lineStyle: {color: '#6b6b76', type: 'dashed'}, label: {color: MUT, formatter: '50%'}, data: [{yAxis: 50}]}}],
-    animationDuration: 300,
+function fita(cron, formacaoDa, finais) {
+  let ano = '', html = '';
+  cron.forEach(p => {
+    const a = p.data.slice(0, 4); if (a !== ano) { ano = a; html += `<b>${a}</b>`; }
+    const trofeu = finais.has(p.partida_id);
+    html += `<i class="e${formacaoDa.get(p.partida_id) || 0}${trofeu ? ' t' : p.resultado === 'V' ? ' v' : ''}" data-tip="${esc(`${dataBR(p.data)}\nFURIA ${p.placar_furia} x ${p.placar_adversario} ${p.adversario}\n${p.evento}${trofeu ? '\nPartida do troféu' : ''}`)}"></i>`;
   });
-  addEventListener('resize', () => forma.resize());
+  $('q').innerHTML = html;
+  $('onde-n').textContent = `${fmt(cron.length)} partidas, de ${cron[0].data.slice(0, 4)} a ${cron[cron.length - 1].data.slice(0, 4)}`;
+}
+
+function capitulo(e, anterior) {
+  const sm = somaMapas(e.mapas);
+  const chegou = anterior ? e.nomes.filter(n => !anterior.nomes.includes(n)) : [], saiu = anterior ? anterior.nomes.filter(n => !e.nomes.includes(n)) : [];
+  const troca = !anterior ? 'É a primeira formação a passar de cinquenta partidas.'
+    : `${chegou.length > 1 ? 'Chegaram' : 'Chegou'} ${lista(chegou)} no lugar de ${lista(saiu)}.`;
+  const porMapa = [...agrupa(e.mapas, m => m.mapa)].map(([mapa, ms]) => Object.assign({mapa}, somaMapas(ms))).filter(m => m.jogados >= 8).sort((a, b) => b.ap - a.ap);
+  return `<article class="cap pag" id="pagina-${e.id}" data-era="${e.id}">
+    <header><h3>${periodo(e.l.primeira_partida, e.l.ultima_partida)}</h3><span>Página ${e.id}</span></header>
+    <p class="conto">${fmt(e.sp.partidas)} partidas e ${fmt(e.sp.v)} vitórias entre ${dataBR(e.l.primeira_partida)} e ${dataBR(e.l.ultima_partida)}, com ${fmt(sm.ap, 1)}% dos mapas vencidos. ${esc(troca)}</p>
+    <div class="figs cinco">${jogadoresEm(e.nomes, e.mapas).map((j, i) => figurinha(j, e.id * 10 + i + 1, i)).join('')}</div>
+    <div class="extra">
+      <div><h4>Mapas desta formação</h4>${barras(porMapa.map(m => ({rot: m.mapa, extra: `${m.jogados} jogados`, txt: fmt(m.ap) + '%', val: m.ap})))}</div>
+      <div><h4>${e.trofeus.length === 1 ? '1 troféu' : e.trofeus.length + ' troféus'}</h4>${e.trofeus.length
+        ? `<ul class="trofeus">${e.trofeus.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : '<p>Esta página ficou sem figurinha brilhante.</p>'}</div>
+    </div></article>`;
+}
+
+function outras(eras) {
+  $('outras').innerHTML = `<h4 style="font-weight:800;font-size:18px">As outras ${eras.length} páginas</h4>
+    <p class="sub">Formações de passagem, com menos de ${MIN_CAPITULO} partidas: substituições, testes e empréstimos.</p>
+    <table><thead><tr><th>Jogadores</th><th>Quando</th><th class="d">Partidas</th><th class="d">Mapas vencidos</th></tr></thead><tbody>${eras.map(e =>
+      `<tr><td>${esc(e.nomes.join(', '))}</td><td>${periodo(e.l.primeira_partida, e.l.ultima_partida)}</td><td class="d">${e.l.partidas}</td><td class="d">${fmt(e.l.aproveitamento_mapas, 1)}%</td></tr>`).join('')}</tbody></table>`;
+}
+
+// Enquanto um capítulo está no meio da tela, só as partidas daquela formação ficam acesas na fita.
+function acendeAoRolar(capitulos) {
+  const q = $('q'), porId = new Map(capitulos.map(e => [String(e.id), e]));
+  let ativa = null;
+  const acende = id => {
+    if (id === ativa) return; ativa = id;
+    q.querySelectorAll('i.on').forEach(i => i.classList.remove('on'));
+    q.classList.toggle('foco', !!id);
+    const e = id && porId.get(id);
+    if (e) q.querySelectorAll('i.e' + id).forEach(i => i.classList.add('on'));
+    $('onde').textContent = e ? `Página ${e.id}: ${e.nomes.join(', ')}` : 'Todas as formações';
+    $('onde-n').textContent = e ? `${fmt(e.sp.partidas)} partidas, ${fmt(e.sp.v)} vitórias` : `${fmt(B.partidas.length)} partidas, de ${B.min.slice(0, 4)} a ${B.max.slice(0, 4)}`;
+  };
+  const visiveis = new Set();
+  const obs = new IntersectionObserver(es => {
+    es.forEach(x => x.isIntersecting ? visiveis.add(x.target.dataset.era) : visiveis.delete(x.target.dataset.era));
+    acende([...visiveis].sort((a, b) => a - b)[0] || null);
+  }, {rootMargin: '-45% 0px -45% 0px'});
+  document.querySelectorAll('.cap').forEach(c => obs.observe(c));
+}
+
+// Um gráfico pequeno por jogador, todos na mesma escala de tempo e de rating.
+function trajetorias(atuais) {
+  const sem = d => d.slice(0, 4) + (+d.slice(5, 7) <= 6 ? 'a' : 'b');
+  const eixo = []; for (let a = +B.min.slice(0, 4); a <= +B.max.slice(0, 4); a++) eixo.push(a + 'a', a + 'b');
+  const linhas = []; B.mapas.forEach(m => m.jg.TOTAL.forEach(j => linhas.push(Object.assign({s: sem(m.data), data: m.data}, j))));
+  const W = 260, H = 84, MIN = .75, MAX = 1.45, x = i => 4 + (W - 8) * i / (eixo.length - 1), y = r => H - 6 - (H - 12) * (Math.max(MIN, Math.min(MAX, r)) - MIN) / (MAX - MIN);
+  const jogadores = [...agrupa(linhas, j => j.jogador)].filter(([, ls]) => ls.length >= MIN_TRAJETORIA).map(([nome, ls]) => {
+    const porSem = agrupa(ls, j => j.s), pontos = eixo.map((s, i) => { const g = porSem.get(s); return g && g.length >= 5 ? [x(i), y(somaJog(g).rating), s, somaJog(g).rating, g.length] : null; });
+    return {nome, pontos, total: somaJog(ls), de: ls[0].data, ate: ls[ls.length - 1].data};
+  }).sort((a, b) => a.de.localeCompare(b.de));
+  $('traj').innerHTML = jogadores.map(j => {
+    let d = '', solto = true;
+    j.pontos.forEach(p => { if (!p) { solto = true; return; } d += (solto ? 'M' : 'L') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); solto = false; });
+    return `<div><h4>${esc(j.nome)}<span>${atuais.includes(j.nome) ? 'no elenco' : periodo(j.de, j.ate)}</span></h4>
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Rating de ${esc(j.nome)} por semestre">
+        <line x1="0" x2="${W}" y1="${y(1)}" y2="${y(1)}" stroke="currentColor" stroke-width="1" stroke-dasharray="3 4" opacity=".55"/>
+        <path d="${d}" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+        ${j.pontos.filter(Boolean).map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.6" fill="var(--am)" stroke="currentColor" stroke-width="2" data-tip="${p[2].slice(0, 4)}, ${p[2][4] === 'a' ? '1º' : '2º'} semestre\nRating ${fmt(p[3], 2)} em ${p[4]} mapas"/>`).join('')}
+      </svg><p><span>${B.min.slice(0, 4)}</span><span class="n"><b>${fmt(j.total.rating, 2)}</b> em ${fmt(j.total.mapas)} mapas</span><span>${B.max.slice(0, 4)}</span></p></div>`;
+  }).join('');
+}
+
+function prateleira() {
+  const eventos = [...B.colocacao.values()].filter(e => e.partidas).sort((a, b) => (a.data_fim || '').localeCompare(b.data_fim || ''));
+  $('estante').innerHTML = [...agrupa(eventos, e => e.ano)].sort((a, b) => a[0] - b[0]).map(([ano, es]) => {
+    const t = es.filter(e => e.pior_posicao === 1).length;
+    return `<div><b>${ano}</b><p>${es.map(e => `<i class="${e.pior_posicao === 1 ? 't' : e.colocacao == null ? 's' : e.melhor_posicao <= 4 ? 'p' : ''}" data-tip="${esc(`${e.evento}\n${e.colocacao ? 'Colocação: ' + e.colocacao : 'Sem colocação registrada'}\n${e.vitorias} vitórias e ${e.derrotas} derrotas`)}"></i>`).join('')}</p>
+      <span>${t ? (t === 1 ? '1 troféu' : t + ' troféus') : es.length + ' campeonatos'}</span></div>`;
+  }).join('');
 }

@@ -8,6 +8,21 @@ Coleta o histórico de partidas de CS da FURIA na [HLTV](https://www.hltv.org) e
 | **Silver** | Modelo estrela (fatos e dimensões), na ótica da FURIA | `data/furia.duckdb`, schema `silver` |
 | **Gold** | Tabelas agregadas e tabelas no grão de mapa para o dashboard | schema `gold`; as que o site usa vão para `docs/data/*.json` |
 
+O caminho de uma partida, da página da HLTV até o site:
+
+```mermaid
+flowchart LR
+    hltv[(HLTV.org)] -->|Chrome de depuração| coleta[extract<br>crawler e browser]
+    coleta --> bronze[(Bronze<br>HTML compactado)]
+    bronze --> leitura[transform<br>parsers]
+    leitura --> silver[(Silver<br>fatos e dimensões)]
+    silver -->|sql/gold| gold[(Gold<br>tabelas de análise)]
+    gold -->|load| json[docs/data<br>7 arquivos JSON]
+    json --> site[GitHub Pages<br>álbum e análise]
+    n8n{{n8n<br>carga diária}} -.->|run_diario.ps1| coleta
+    n8n -.->|e-mail e WhatsApp| aviso([aviso de partida nova])
+```
+
 Como a bronze guarda o HTML original, corrigir ou ampliar o que é lido não exige raspar de novo: basta `python main.py reconstruir`.
 
 ## Modelo de dados
@@ -34,10 +49,10 @@ As transformações estão em SQL puro, em [`sql/silver`](sql/silver) e [`sql/go
 
 Site estático em [`docs/`](docs), servido pelo GitHub Pages:
 
-- `index.html`: visão geral, indicadores, a linha do tempo com todas as partidas, forma, mapas e elenco.
-- `analise.html`: análise detalhada em abas, resumo, mapas, jogadores, vetos, adversários, campeonatos e partidas.
+- `index.html`: o álbum. A formação atual em figurinhas, uma figurinha para cada partida da história, uma página para cada formação que passou de 50 partidas, a trajetória de rating dos jogadores e a prateleira de campeonatos.
+- `analise.html`: a análise completa, em abas: resumo (com calendário), mapas (CT contra TR e lado inicial), jogadores, vetos, adversários, jogos grandes, placares, campeonatos e partidas.
 
-As duas páginas têm os mesmos filtros (período, lineup, mapas, jogador, adversário, ambiente e formato) e recalculam tudo no navegador conforme o recorte. O código comum fica em `comum.js` e `comum.css`; cada página tem o seu script (`index.js`, `analise.js`). As páginas carregam esses arquivos com `?v=<versão>`; ao mudar o visual ou os scripts, troque esse número para o navegador não misturar arquivos novos com antigos em cache. Uma política de segurança de conteúdo (CSP) só permite scripts do próprio site e a biblioteca de gráficos, conferida por hash.
+A análise tem filtros de período, formação, mapas, jogador, adversário, ambiente e formato, e recalcula tudo no navegador conforme o recorte. Nas duas páginas, cheio é vitória e vazado é derrota. O código comum fica em `comum.js` e `comum.css`; cada página tem o seu script (`index.js`, `analise.js`). Os gráficos são desenhados com HTML, CSS e SVG, sem biblioteca externa, e uma política de segurança de conteúdo (CSP) só permite scripts do próprio site. As páginas carregam os arquivos com `?v=<versão>`; ao mudar o visual ou os scripts, troque esse número para o navegador não misturar arquivos novos com antigos em cache.
 
 Os dados ficam em `docs/data/`: a cada execução a esteira copia para lá as tabelas gold que o site usa. Com `--publicar`, ela também faz o commit dessa pasta e o push; o GitHub Pages atualiza o site em seguida. Só há commit quando algum dado mudou.
 

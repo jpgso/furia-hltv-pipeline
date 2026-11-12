@@ -3,167 +3,150 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
 <title>FURIA em dados</title>
-<meta name="description" content="Todo o histórico da FURIA no Counter-Strike, coletado da HLTV e modelado por uma esteira de dados em arquitetura medalhão.">
+<meta name="description" content="O álbum da FURIA no Counter-Strike: todas as partidas, formações e troféus, coletados da HLTV por uma esteira de dados em arquitetura medalhão.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,800&display=swap" rel="stylesheet">
-<script defer src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js" integrity="sha384-Mx5lkUEQPM1pOJCwFtUICyX45KNojXbkWdYhkKUKsbv391mavbfoAmONbzkgYPzR" crossorigin="anonymous"></script>
-<link rel="stylesheet" href="comum.css?v=2.0.1">
-<script defer src="comum.js?v=2.0.1"></script>
-<script defer src="index.js?v=2.0.1"></script>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&family=Bowlby+One&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="comum.css?v=3.0.0">
+<script defer src="comum.js?v=3.0.0"></script>
+<script defer src="index.js?v=3.0.0"></script>
 <style>
-body{overflow-x:hidden;counter-reset:sec}
-.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
-nav{position:sticky;top:0;z-index:10;background:rgba(10,10,12,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-nav .wrap{display:flex;justify-content:space-between;align-items:center;height:56px}
-nav .links a{color:var(--mut);text-decoration:none;font-size:13px;margin-left:22px}
-nav .links a:hover{color:var(--txt)}
-nav .links a.dest{color:var(--txt);font-weight:600;border-bottom:2px solid var(--acc);padding-bottom:2px}
-.live{font-size:12px;color:var(--mut)}
-.fbar{position:sticky;top:56px;z-index:9;background:rgba(10,10,12,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.ftop{display:flex;align-items:center;gap:14px;min-height:46px;flex-wrap:wrap;padding:6px 0}
-.fbtn{background:none;border:1px solid var(--line);color:var(--txt);border-radius:2px;height:32px;padding:0 14px;cursor:pointer;font:inherit;font-size:13px;display:flex;align-items:center;gap:8px}
-.fbtn:hover,.fbtn.on{background:var(--txt);border-color:var(--txt);color:#000}
-.fbtn i{font-style:normal}.fbtn.on i{transform:rotate(180deg)}
-.ativos{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
-.ativos span{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.28);border-radius:2px;padding:3px 10px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.ftop .conta{font-size:13px}
-.fbar .filtros{margin:4px 0 14px;display:none}.fbar .filtros.aberto{display:block}
-.fbar .barra .conta{display:none}
-.vazio{padding:70px 0;text-align:center;color:var(--mut)}
+main>section,footer{padding:0 var(--mg)}
+h1{font:400 clamp(40px,5.3vw,88px)/.92 var(--gorda);letter-spacing:-.02em;margin:0 0 20px}
+h2{font:400 clamp(28px,4.4vw,60px)/.95 var(--gorda);letter-spacing:-.01em;max-width:18ch}
+.sub{max-width:62ch;margin-top:10px}
+.pag{background:var(--am2);border:3px solid var(--ink);padding:22px 20px 26px}
 
-/* Abertura: título em duas linhas e o placar geral. */
-.hero{padding:52px 0 44px;border-bottom:1px solid var(--line);background:repeating-linear-gradient(115deg,transparent 0 26px,rgba(255,255,255,.025) 26px 28px)}
-.kicker{font-family:var(--disp);font-weight:600;font-size:17px;letter-spacing:.16em;text-transform:uppercase;color:var(--acc)}
-.hero h1{font-family:var(--disp);font-style:italic;font-weight:800;text-transform:uppercase;font-size:clamp(68px,14vw,184px);line-height:.84;margin:10px 0 24px}
-.hero h1 span{display:block;color:transparent;-webkit-text-stroke:2px var(--txt)}
-.lead{max-width:600px;color:var(--mut);font-size:17px}
-.lead b{color:var(--txt)}
-.cta{display:inline-flex;align-items:center;gap:12px;margin-top:24px;background:var(--txt);color:#000;font-family:var(--disp);font-weight:700;font-size:21px;letter-spacing:.05em;text-transform:uppercase;text-decoration:none;padding:11px 24px;border-radius:2px}
-.cta:hover{background:var(--acc)}
-.mais{display:inline-block;margin-top:16px;color:var(--txt);text-decoration:none;font-size:13px;font-weight:600;border-bottom:2px solid var(--acc);padding-bottom:1px}
-.mais:hover{color:var(--acc)}
-.big{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:40px}
-.big>div{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--txt);padding:18px 20px 16px}
-.big>div:first-child{background:var(--txt);border-color:var(--txt);color:#000}
-.big .n{font-family:var(--disp);font-weight:700;font-size:clamp(48px,6.6vw,92px);line-height:.95}
-.big .n small{font-size:.45em;margin-left:2px;opacity:.6}
-.big .l{color:var(--mut);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin-top:6px}
-.big>div:first-child .l{color:#000;opacity:.7}
-.placar{display:flex;gap:3px;height:16px;margin-top:14px}
-.placar i{display:block;height:100%;min-width:2px}
-.placar-l{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:var(--mut);margin-top:8px}
-.placar-l b{font-family:var(--disp);font-weight:700;font-size:22px;color:var(--txt);margin-right:6px}
+/* Capa */
+.capa{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:40px;align-items:center;padding-top:34px}
+.lide{max-width:44ch;font-size:19px}
+.capa .ir{display:inline-block;margin-top:22px;background:var(--ink);color:var(--am);font-weight:800;text-decoration:none;padding:11px 20px}
+.capa .ir:hover{background:var(--face);color:var(--ink)}
+.capa .pag h2{font-size:22px;max-width:none;line-height:1.05}
+.capa .pag small{font-size:13px;display:block;margin:4px 0 18px}
+.capa .fig{animation:cola .5s cubic-bezier(.2,1.5,.4,1) backwards;animation-delay:calc(var(--i)*90ms + 200ms)}
+@keyframes cola{from{opacity:0;transform:rotate(calc(var(--r)*4)) scale(1.25)}}
 
-section{padding:60px 0 8px;counter-increment:sec}
-h2{font-family:var(--disp);font-style:italic;font-weight:800;text-transform:uppercase;font-size:clamp(36px,5.2vw,60px);line-height:1}
-h2::before{content:counter(sec,decimal-leading-zero);font-style:normal;font-weight:600;font-size:.4em;letter-spacing:.1em;color:var(--acc);margin-right:14px;vertical-align:.9em}
-.sub{color:var(--mut);margin:8px 0 24px;max-width:680px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:20px}
-#dna{width:100%;height:230px;display:block;cursor:crosshair}
-.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-top:12px}
-.legend i{display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px}
-#tip{position:fixed;pointer-events:none;background:#000;border:1px solid var(--txt);padding:10px 12px;font-size:12px;opacity:0;transition:opacity .12s;z-index:20;min-width:210px}
-#tip b{font-size:14px}
-.grid2{display:grid;grid-template-columns:1.6fr 1fr;gap:18px}
-#forma{height:318px}
-.last{display:flex;flex-direction:column;gap:8px}
-.row{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;padding:9px 14px;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--c)}
-.row .sc{font-family:var(--disp);font-weight:700;font-size:30px;line-height:1;color:var(--c)}
-.row .who{font-weight:600}.row .ev{font-size:12px;color:var(--mut)}
-.maps{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
-.map{text-align:center;padding:20px 12px 16px}
-.ring{--p:0;width:116px;height:116px;border-radius:50%;margin:0 auto 12px;display:grid;place-items:center;background:conic-gradient(var(--c) calc(var(--p)*1%),#1c1c22 0)}
-.ring::before{content:"";grid-area:1/1;width:92px;height:92px;border-radius:50%;background:var(--panel)}
-.ring span{grid-area:1/1;font-family:var(--disp);font-weight:700;font-size:32px;z-index:1}
-.map .nm{font-family:var(--disp);font-weight:700;font-size:24px;letter-spacing:.04em;text-transform:uppercase;line-height:1.1}
-.map .mt{font-size:12px;color:var(--mut)}
-.sides{display:flex;height:6px;overflow:hidden;margin:10px 6px 4px;background:#1c1c22}
-.sides i{display:block;height:100%}
-.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
-.pl{border-top:3px solid var(--c)}
-.pl .nick{font-family:var(--disp);font-style:italic;font-weight:800;font-size:34px;text-transform:uppercase;line-height:1}
-.pl .rt{font-family:var(--disp);font-weight:700;font-size:76px;line-height:.95;margin-top:8px;color:var(--c)}
-.pl .mt{color:var(--mut);font-size:12px}
-.pl .st{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:10px;margin-top:12px}
-.pl .st b{display:block;color:var(--txt);font-family:var(--disp);font-weight:700;font-size:22px;line-height:1.1}
-.pipe{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.step .k{font-family:var(--disp);font-weight:700;font-size:54px;line-height:1;color:transparent;-webkit-text-stroke:1px var(--mut)}
-.step .t{font-family:var(--disp);font-weight:700;font-size:26px;text-transform:uppercase;letter-spacing:.03em;margin:8px 0 4px}
-.step .t small{font-size:.6em;color:var(--acc);margin-right:8px;letter-spacing:.1em}
-.step p{font-size:13px;color:var(--mut)}
-.step .v{margin-top:12px;font-size:13px}
-footer{color:var(--mut);font-size:12px;padding:56px 0 60px}
-footer a{color:var(--txt)}
-@media(max-width:820px){.fbar.aberta{position:static}.big,.pipe{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}nav .links{display:none}}
+/* Uma figurinha por partida: fica presa no topo enquanto os capítulos passam. */
+.linha{margin-top:70px}
+.fita{background:var(--am);padding:14px 0 12px;border-bottom:3px solid var(--ink);z-index:5}
+.fita .onde{display:flex;justify-content:space-between;gap:16px;font-size:14px;margin-bottom:8px;flex-wrap:wrap}
+.fita .onde b{font-weight:800}
+.q{display:flex;flex-wrap:wrap;gap:2px}
+.q i{width:10px;height:10px;border-radius:2px;border:1.5px solid var(--ink);transition:opacity .25s}
+.q i.v{background:var(--ink)}
+.q i.t{background:var(--holo);width:16px;height:16px;margin:-3px 0;border-radius:50%}
+.q b{font:400 11px/10px var(--gorda);padding:0 5px 0 8px}
+.q.foco i:not(.on){opacity:.16}
+@media(min-width:900px) and (min-height:640px){.fita{position:sticky;top:0}}
+
+/* Capítulos */
+.cap{margin-top:46px;scroll-margin-top:210px}
+.cap header{display:flex;align-items:baseline;gap:8px 18px;flex-wrap:wrap}
+.cap h3{font:400 clamp(30px,4.6vw,64px)/1.05 var(--gorda)}
+.cap header span{font-weight:700;font-size:15px}
+.cap .conto{max-width:68ch;margin:10px 0 22px}
+.cap .extra{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px 40px;margin-top:26px}
+.cap h4,.traj h4{font-weight:800;font-size:16px;border-top:5px solid var(--ink);padding-top:7px;margin-bottom:11px}
+.trofeus{display:flex;flex-wrap:wrap;gap:7px;list-style:none;padding:0}
+.trofeus li{background:var(--holo);border:1.5px solid var(--ink);border-radius:20px;padding:3px 12px;font-size:13px;font-weight:700}
+.outras{margin-top:46px}
+.outras table,.poucos{width:100%;border-collapse:collapse;font-size:14px;margin-top:12px}
+.outras th{text-align:left;font-weight:800;border-bottom:3px solid var(--ink);padding:6px 10px 6px 0}
+.outras td{border-bottom:1px solid rgba(20,18,16,.25);padding:6px 10px 6px 0}
+.outras .d{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* Trajetórias e prateleira */
+.bloco{margin-top:90px}
+.traj{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:26px 28px;margin-top:26px}
+.traj h4{display:flex;justify-content:space-between;gap:10px;margin-bottom:2px}
+.traj h4 span{font-weight:500;font-size:13px}
+.traj svg{display:block;width:100%;height:auto;overflow:visible}
+.traj p{font-size:13px;display:flex;justify-content:space-between}
+.estante{margin-top:26px}
+.estante>div{display:grid;grid-template-columns:54px 1fr auto;gap:12px;align-items:end;border-bottom:3px solid var(--ink);padding:14px 0 5px}
+.estante b{font:400 18px/1 var(--gorda)}
+.estante span{font-size:13px;font-weight:700;white-space:nowrap}
+.estante p{display:flex;flex-wrap:wrap;gap:4px;align-items:flex-end}
+.estante i{width:12px;height:12px;border:1.5px solid var(--ink);border-radius:2px}
+.estante i.p{background:var(--ink)}
+.estante i.s{width:5px;height:5px;border:0;background:rgba(20,18,16,.45);border-radius:50%;margin:0 2px 3px}
+.estante i.t{width:26px;height:34px;background:var(--holo);border-radius:4px}
+.leg{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:13px;margin-top:14px;align-items:center}
+.leg i{display:inline-block;vertical-align:-2px;margin-right:6px;width:12px;height:12px;border:1.5px solid var(--ink);border-radius:2px}
+
+/* Como foi feito */
+.feito ol{list-style:none;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;margin-top:26px;counter-reset:passo}
+.feito li{counter-increment:passo;border-top:5px solid var(--ink);padding-top:8px;font-size:15px}
+.feito li::before{content:counter(passo);font:400 34px/1 var(--gorda);display:block;margin-bottom:6px}
+.feito li b{display:block;font-weight:800;font-size:17px}
+footer{margin-top:80px;padding-bottom:50px;font-size:14px}
+footer p{border-top:3px solid var(--ink);padding-top:12px;max-width:none}
+
+@media(max-width:900px){.capa{grid-template-columns:1fr;gap:22px}.cap .extra{grid-template-columns:1fr}.feito ol{grid-template-columns:repeat(2,minmax(0,1fr))}.q i{width:7px;height:7px;border-width:1px;border-radius:1px}.q i.t{width:11px;height:11px;margin:-2px 0}.cap{scroll-margin-top:20px}}
+@media(max-width:520px){.feito ol{grid-template-columns:1fr}.estante>div{grid-template-columns:44px 1fr}.estante span{grid-column:2}.pag{padding:16px 12px 20px}}
 </style>
 </head>
 <body>
-<nav><div class="wrap">
-  <div class="brand">FURIA <b>em dados</b></div>
-  <div class="links"><a href="#historia">História</a><a href="#forma-s">Forma</a><a href="#mapas">Mapas</a><a href="#elenco">Elenco</a><a href="#projeto">O projeto</a><a class="dest" href="analise.html">Análise detalhada →</a></div>
-  <div class="live"><span id="atualizado">carregando…</span></div>
-</div></nav>
+<header class="topo">
+  <a class="marca" href="index.html">FURIA em dados</a>
+  <nav><a href="#formacoes">Formações</a><a href="#jogadores">Jogadores</a><a href="#trofeus">Troféus</a><a href="#feito">Como foi feito</a><a class="forte" href="analise.html">Análise completa</a></nav>
+  <span id="atualizado">carregando</span>
+</header>
 
-<div class="fbar"><div class="wrap">
-  <div class="ftop"><button class="fbtn" id="f-abre">Filtros <i>▾</i></button><div class="ativos" id="f-ativos"></div><div class="conta" id="conta2">carregando…</div></div>
-  <div class="filtros" id="filtros"></div>
-</div></div>
-
-<header class="hero"><div class="wrap">
-  <div class="kicker" id="kicker">Counter-Strike</div>
-  <h1>FURIA <span>em números</span></h1>
-  <p class="lead"><b id="h-part">–</b> <span id="h-pal">partidas</span> registradas na HLTV, coletadas e modeladas por uma esteira de dados que se atualiza a cada partida nova.</p>
-  <a class="cta" href="analise.html">Análise detalhada <span>→</span></a>
-  <div class="big">
-    <div><div class="n"><span id="k-ap">–</span><small>%</small></div><div class="l">Aproveitamento</div></div>
-    <div><div class="n" id="k-tit">–</div><div class="l">Títulos</div></div>
-    <div><div class="n" id="k-seq">–</div><div class="l">Maior sequência de vitórias</div></div>
-    <div><div class="n" id="k-rd">–</div><div class="l">Rounds disputados</div></div>
+<main>
+<section class="capa">
+  <div>
+    <h1 id="titulo">O álbum da FURIA</h1>
+    <p class="lide" id="lide">Carregando as partidas.</p>
+    <a class="ir" href="analise.html">Abrir a análise completa</a>
   </div>
-  <div class="placar"><i id="b-v" style="background:var(--acc)"></i><i id="b-e" style="background:#77777f"></i><i id="b-d" style="background:var(--loss)"></i></div>
-  <div class="placar-l"><span><b id="l-v">–</b>vitórias</span><span id="l-e"></span><span><b id="l-d">–</b>derrotas</span></div>
-</div></header>
-
-<section id="historia"><div class="wrap">
-  <h2 id="t-dna">Toda a história em uma linha</h2>
-  <p class="sub">Cada barra é uma partida do recorte, em ordem de data. Para cima, vitória; para baixo, derrota. A altura é o saldo de rounds. Os pontos dourados são os títulos.</p>
-  <div class="card"><canvas id="dna"></canvas>
-    <div class="legend"><span><i style="background:var(--acc)"></i>Vitória</span><span><i style="background:var(--loss)"></i>Derrota</span><span><i style="background:var(--gold);border-radius:50%"></i>Título</span><span>Passe o mouse para ver a partida</span></div>
+  <div class="pag">
+    <h2 id="capa-t">A formação de agora</h2>
+    <small id="capa-s"></small>
+    <div class="figs" id="capa-figs"></div>
   </div>
-</div></section>
+</section>
 
-<section id="forma-s"><div class="wrap">
-  <h2>Forma</h2>
-  <p class="sub">Aproveitamento nas últimas 10 partidas ao longo do tempo, e os resultados mais recentes.</p>
-  <div class="grid2"><div class="card"><div id="forma"></div></div><div class="last" id="ultimas"></div></div>
-  <a class="mais" href="analise.html#partidas">Ver todas as partidas, com filtros →</a>
-</div></section>
+<section class="linha" id="formacoes">
+  <h2>Uma figurinha por partida</h2>
+  <p class="sub">Preta é vitória, vazada é derrota e a brilhante é a partida que fechou um troféu. Estão em ordem, da primeira à mais recente. Role a página: cada formação acende o seu trecho.</p>
+  <div class="fita">
+    <div class="onde"><b id="onde">Todas as formações</b><span id="onde-n"></span></div>
+    <div class="q" id="q"></div>
+  </div>
+  <div id="caps"></div>
+</section>
 
-<section id="mapas"><div class="wrap">
-  <h2>Mapas</h2>
-  <p class="sub">Taxa de vitória em cada mapa: verde a partir de 50%, vermelho abaixo. A barra mostra o aproveitamento de rounds como CT e como TR.</p>
-  <div class="maps" id="maps"></div>
-  <a class="mais" href="analise.html#mapas">Ver mapas por período, lineup e lado →</a>
-</div></section>
+<section class="outras" id="outras"></section>
 
-<section id="elenco"><div class="wrap">
-  <h2 id="t-elenco">Elenco atual</h2>
-  <p class="sub" id="s-elenco">Rating médio da HLTV em todos os mapas jogados pela FURIA.</p>
-  <div class="players" id="players"></div>
-  <a class="mais" href="analise.html#jogadores">Ver todos os jogadores, por mapa e por lado →</a>
-</div></section>
+<section class="bloco" id="jogadores">
+  <h2>Quem vestiu a camisa</h2>
+  <p class="sub">Rating da HLTV de cada jogador com mais de cem mapas pela FURIA, semestre a semestre. A linha tracejada é o rating 1,00, a média de um jogador comum.</p>
+  <div class="traj" id="traj"></div>
+</section>
 
-<section id="projeto"><div class="wrap">
-  <h2>Como isso foi construído</h2>
-  <p class="sub">Arquitetura medalhão, só com ferramentas gratuitas: Python, DuckDB, SQL puro e n8n.</p>
-  <div class="pipe" id="pipe"></div>
-</div></section>
+<section class="bloco" id="trofeus">
+  <h2>A prateleira</h2>
+  <p class="sub">Todos os campeonatos disputados, ano a ano, na ordem em que terminaram.</p>
+  <div class="leg"><span><i style="background:var(--holo);width:14px;height:18px;border-radius:3px"></i>campeã</span><span><i style="background:var(--ink)"></i>entre as quatro melhores</span><span><i></i>outras colocações</span><span><i style="width:5px;height:5px;border:0;border-radius:50%;background:rgba(20,18,16,.45);vertical-align:2px"></i>sem colocação registrada</span></div>
+  <div class="estante" id="estante"></div>
+</section>
 
-<footer><div class="wrap">Projeto de fã, não oficial. Dados: HLTV.org. Código e documentação no <a href="https://github.com/jpgso/furia-hltv-pipeline">GitHub</a>.</div></footer>
-<div id="tip"></div>
+<section class="bloco feito" id="feito">
+  <h2>Como este álbum é feito</h2>
+  <p class="sub">Nada aqui é digitado à mão. Uma esteira de dados em arquitetura medalhão, só com ferramentas gratuitas, refaz a página sempre que a FURIA joga.</p>
+  <ol>
+    <li><b>Coleta</b>Cada página de partida da HLTV é aberta uma única vez e guardada como veio, compactada. <span id="f-bronze"></span></li>
+    <li><b>Limpeza</b>Consultas SQL no DuckDB transformam o HTML em fatos e dimensões, sempre do ponto de vista da FURIA.</li>
+    <li><b>Análise</b>Outra camada de SQL monta as tabelas prontas para consulta. Sete delas viram os arquivos que esta página lê.</li>
+    <li><b>Rotina</b>Um fluxo no n8n repete tudo todos os dias e avisa por e-mail e WhatsApp quando entra partida nova.</li>
+  </ol>
+</section>
+</main>
 
+<footer><p>Projeto de fã, sem vínculo com a FURIA. Dados da HLTV.org. Código e documentação no <a href="https://github.com/jpgso/furia-hltv-pipeline">GitHub</a>.</p></footer>
 </body>
 </html>
