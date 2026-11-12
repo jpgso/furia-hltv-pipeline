@@ -201,6 +201,36 @@ def test_tabelas_de_detalhe_alimentam_os_filtros(tmp_path):
     assert {"lineups", "detalhe_mapas", "detalhe_jogadores", "detalhe_vetos"} <= {p.stem for p in export.glob("*.json")}
 
 
+# ------------------------------------------- gold de adversários e de placares
+def test_confronto_por_mapa_e_placares(tmp_path):
+    _, db, export, _ = _build(tmp_path)
+    con = warehouse.connect(db)
+    q = lambda sql: con.execute(sql).fetchall()
+    # Lazarus: Overpass 16-10, Mirage 15-19 na prorrogação, Inferno 9-16; Nouns: Vertigo 13-5, Mirage 13-7
+    assert q("SELECT adversario, mapa, jogados, vitorias, derrotas, aproveitamento, saldo_rounds, prorrogacoes, "
+             "ultimo_resultado FROM gold.confronto_por_mapa ORDER BY adversario, mapa") == [
+        ("Lazarus", "Inferno", 1, 0, 1, 0.0, -7, 0, "D"),
+        ("Lazarus", "Mirage", 1, 0, 1, 0.0, -4, 1, "D"),
+        ("Lazarus", "Overpass", 1, 1, 0, 100.0, 6, 0, "V"),
+        ("Nouns", "Mirage", 1, 1, 0, 100.0, 6, 0, "V"),
+        ("Nouns", "Vertigo", 1, 1, 0, 100.0, 8, 0, "V")]
+    # somar os mapas de um adversário reproduz o confronto direto
+    assert q("SELECT adversario, sum(vitorias), sum(derrotas) FROM gold.confronto_por_mapa GROUP BY 1 ORDER BY 1") == q(
+        "SELECT adversario, mapas_vencidos, mapas_perdidos FROM gold.confronto_direto ORDER BY 1")
+    assert q("SELECT rounds_furia, rounds_adversario, resultado, teve_prorrogacao, apertado, vezes, pct_dos_mapas "
+             "FROM gold.placares ORDER BY rounds_furia DESC, rounds_adversario") == [
+        (16, 10, "V", False, False, 1, 20.0),
+        (15, 19, "D", True, False, 1, 20.0),
+        (13, 5, "V", False, False, 1, 20.0),
+        (13, 7, "V", False, False, 1, 20.0),
+        (9, 16, "D", False, False, 1, 20.0)]
+    # todo mapa disputado cai em exatamente um placar
+    assert q("SELECT sum(vezes) FROM gold.placares") == q("SELECT count(*) FROM gold.detalhe_mapas")
+    con.close()
+    # as duas são tabelas de consulta: o site recalcula esses recortes a partir do detalhe
+    assert not {"confronto_por_mapa", "placares"} & {p.stem for p in export.glob("*.json")}
+
+
 # ------------------------------------------------------ publicação do dashboard
 def test_copia_dos_dados_so_acusa_mudanca_real(tmp_path):
     from config import settings

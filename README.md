@@ -37,7 +37,7 @@ Como a bronze guarda o HTML original, corrigir ou ampliar o que é lido não exi
 | `fato_jogador_mapa` | uma linha por jogador × mapa × lado (TOTAL, CT, TR) |
 | `fato_colocacao_evento` | uma linha por campeonato disputado |
 
-**Gold**, tabelas agregadas: `kpis_gerais`, `partidas`, `desempenho_mensal`, `confronto_direto`, `desempenho_por_evento`, `desempenho_por_mapa`, `desempenho_por_mapa_ano`, `vetos`, `jogadores`, `jogador_por_mapa`, `jogador_por_lado`, `jogador_mensal`.
+**Gold**, tabelas agregadas: `kpis_gerais`, `partidas`, `desempenho_mensal`, `confronto_direto`, `confronto_por_mapa`, `placares`, `desempenho_por_evento`, `desempenho_por_mapa`, `desempenho_por_mapa_ano`, `vetos`, `jogadores`, `jogador_por_mapa`, `jogador_por_lado`, `jogador_mensal`.
 
 Além das agregadas, a gold tem a tabela `lineups` (uma linha por escalação) e quatro tabelas de detalhe (`detalhe_mapas`, `detalhe_jogadores`, `detalhe_jogadores_lado` e `detalhe_vetos`), que o dashboard filtra e recalcula no navegador.
 
