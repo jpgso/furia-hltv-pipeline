@@ -8733,5 +8733,15 @@
 	{"mapstats_id":244125,"jogador":"KSCERATO","rounds":13,"kills":11,"deaths":6,"adr":93.0,"kast_pct":92.3,"rating":1.33},
 	{"mapstats_id":244125,"jogador":"YEKINDAR","rounds":13,"kills":16,"deaths":6,"adr":122.3,"kast_pct":100.0,"rating":2.24},
 	{"mapstats_id":244125,"jogador":"molodoy","rounds":13,"kills":21,"deaths":5,"adr":129.5,"kast_pct":100.0,"rating":2.66},
-	{"mapstats_id":244125,"jogador":"yuurih","rounds":13,"kills":6,"deaths":5,"adr":81.3,"kast_pct":100.0,"rating":1.31}
+	{"mapstats_id":244125,"jogador":"yuurih","rounds":13,"kills":6,"deaths":5,"adr":81.3,"kast_pct":100.0,"rating":1.31},
+	{"mapstats_id":244325,"jogador":"FalleN","rounds":30,"kills":23,"deaths":21,"adr":79.1,"kast_pct":76.7,"rating":1.25},
+	{"mapstats_id":244325,"jogador":"KSCERATO","rounds":30,"kills":28,"deaths":17,"adr":100.1,"kast_pct":86.7,"rating":1.44},
+	{"mapstats_id":244325,"jogador":"YEKINDAR","rounds":30,"kills":15,"deaths":20,"adr":63.2,"kast_pct":73.3,"rating":0.9},
+	{"mapstats_id":244325,"jogador":"molodoy","rounds":30,"kills":25,"deaths":16,"adr":75.1,"kast_pct":70.0,"rating":1.47},
+	{"mapstats_id":244325,"jogador":"yuurih","rounds":30,"kills":15,"deaths":22,"adr":56.7,"kast_pct":73.3,"rating":0.85},
+	{"mapstats_id":244331,"jogador":"FalleN","rounds":18,"kills":5,"deaths":12,"adr":31.6,"kast_pct":77.8,"rating":0.58},
+	{"mapstats_id":244331,"jogador":"KSCERATO","rounds":18,"kills":19,"deaths":11,"adr":119.4,"kast_pct":72.2,"rating":2.1},
+	{"mapstats_id":244331,"jogador":"YEKINDAR","rounds":18,"kills":16,"deaths":12,"adr":94.0,"kast_pct":77.8,"rating":1.65},
+	{"mapstats_id":244331,"jogador":"molodoy","rounds":18,"kills":18,"deaths":8,"adr":89.9,"kast_pct":94.4,"rating":1.92},
+	{"mapstats_id":244331,"jogador":"yuurih","rounds":18,"kills":7,"deaths":10,"adr":55.6,"kast_pct":77.8,"rating":0.87}
 ]

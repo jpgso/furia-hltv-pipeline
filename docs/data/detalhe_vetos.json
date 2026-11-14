@@ -4549,5 +4549,11 @@
 	{"partida_id":2400201,"ordem":3,"mapa":"Inferno","acao":"PICK","autor":"FURIA"},
 	{"partida_id":2400201,"ordem":4,"mapa":"Dust2","acao":"PICK","autor":"ADVERSARIO"},
 	{"partida_id":2400201,"ordem":5,"mapa":"Cache","acao":"BAN","autor":"FURIA"},
-	{"partida_id":2400201,"ordem":6,"mapa":"Nuke","acao":"BAN","autor":"ADVERSARIO"}
+	{"partida_id":2400201,"ordem":6,"mapa":"Nuke","acao":"BAN","autor":"ADVERSARIO"},
+	{"partida_id":2400207,"ordem":1,"mapa":"Cache","acao":"BAN","autor":"ADVERSARIO"},
+	{"partida_id":2400207,"ordem":2,"mapa":"Anubis","acao":"BAN","autor":"FURIA"},
+	{"partida_id":2400207,"ordem":3,"mapa":"Ancient","acao":"PICK","autor":"ADVERSARIO"},
+	{"partida_id":2400207,"ordem":4,"mapa":"Dust2","acao":"PICK","autor":"FURIA"},
+	{"partida_id":2400207,"ordem":5,"mapa":"Nuke","acao":"BAN","autor":"ADVERSARIO"},
+	{"partida_id":2400207,"ordem":6,"mapa":"Inferno","acao":"BAN","autor":"FURIA"}
 ]
